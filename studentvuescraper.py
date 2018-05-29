@@ -101,6 +101,7 @@ class StudentVue:
         """
         browser = self.login()
         browser.get(self.districtdomain.format('PXP_Student.aspx?AGU=0'))
+
         table = browser.find_element_by_class_name('info_tbl')
         rows = table.find_element_by_tag_name('tbody')
         raw_data = [[data.text for data in row.find_elements_by_tag_name(
@@ -123,6 +124,7 @@ class StudentVue:
         browser = self.login()
         browser.get(self.districtdomain.format(
             'PXP_SchoolInformation.aspx?AGU=0'))
+
         table = browser.find_element_by_class_name('info_tbl')
         rows = table.find_element_by_tag_name('tbody')
         raw_data = [[data.text for data in row.find_elements_by_tag_name(
@@ -216,6 +218,7 @@ class StudentVue:
         """
         browser = self.login()
         browser.get(self.districtdomain.format('PXP_Gradebook.aspx?AGU=0'))
+
         browser.find_element_by_xpath(
             "//a[contains(text(), 'P{}')]".format(grading_period)).click()
 
@@ -256,6 +259,7 @@ class StudentVue:
         """
         browser = self.login()
         browser.get(self.districtdomain.format('PXP_Gradebook.aspx?AGU=0'))
+
         browser.find_element_by_xpath("//a[text()={}]".format(period)).click()
         tables = browser.find_elements_by_class_name('info_tbl')
         rows = tables[0].find_element_by_tag_name('tbody')
@@ -305,3 +309,28 @@ class StudentVue:
             grading_data['Assignments'].append(this_assignment_data)
 
         return grading_data
+
+    def getCalendarbyMonth(self, month):
+        browser = self.login()
+        browser.get(self.districtdomain.format('PXP_Calendar.aspx?AGU=0'))
+
+        cal = browser.find_element_by_id('cal_tbl')
+        rows = cal.find_element_by_tag_name('tbody')
+
+        raw_data = [[data.text for data in row.find_elements_by_tag_name(
+            'td')] for row in rows.find_elements_by_tag_name('tr')]
+
+        calendar_data = {}
+
+        for week in raw_data[1:]:
+            for date in week:
+                if not date.strip():
+                    continue
+                elif int(date.split('\n')[0]) != len(calendar_data.keys()) + 1:
+                    continue
+                else:
+                    this_date_data = date.split('\n')
+                    calendar_data['{}/{}'.format(month,
+                                                 this_date_data[0])] = this_date_data[1:]
+
+        return calendar_data
