@@ -1,5 +1,6 @@
 from selenium import webdriver
 from selenium.webdriver.chrome.options import Options
+from selenium.webdriver.support.ui import Select
 
 
 class StudentVue:
@@ -211,7 +212,7 @@ class StudentVue:
     def getGradesbyGradingPeriod(self, grading_period):
         """Gets the student's current grades for the specified grading period
         Args:
-            grading_period (int): The grading period to get grades from
+            grading_period (int/ str): The grading period to get grades from
         Returns:
             A list containing dictionaries with basic class
             information and final grades from that grading period out of 100
@@ -253,7 +254,7 @@ class StudentVue:
     def getGradingInfobyPeriod(self, period):
         """Gets grading information on the class
         Args:
-            period (int): The period of the class
+            period (int/ str): The period of the class
         Returns:
             Dictionary with a grading summary and recent assignments
         """
@@ -308,11 +309,23 @@ class StudentVue:
 
             grading_data['Assignments'].append(this_assignment_data)
 
+        browser.close()
         return grading_data
 
-    def getCalendarbyMonth(self, month):
+    def getCalendarbyMonth(self, month, year):
+        """Get all assignments/ events in the calendar
+        Args:
+            month (int/ str): The month to get events from
+            year (int/ str): The year to get events from
+        Returns:
+            Dictionary with a ;ist of dictionaries containing
+            the events/ assignments for each day in the specified month
+        """
         browser = self.login()
         browser.get(self.districtdomain.format('PXP_Calendar.aspx?AGU=0'))
+
+        calendarDropDown = Select(browser.find_element_by_name('LB'))
+        calendarDropDown.select_by_value('{}/1/{}'.format(month, year))
 
         cal = browser.find_element_by_id('cal_tbl')
         rows = cal.find_element_by_tag_name('tbody')
@@ -333,4 +346,5 @@ class StudentVue:
                     calendar_data['{}/{}'.format(month,
                                                  this_date_data[0])] = this_date_data[1:]
 
+        browser.close()
         return calendar_data

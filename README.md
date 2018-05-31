@@ -14,7 +14,7 @@ Then, create a StudentVue object with your username, password, and the domain na
 sv = StudentVue('username', 'password', 'domain name', driverpath='path/to/driver')
 ```
 
-The current functions of the StudentVue class are ```getSchedule()```, ```getStudentContactInfo()```, ```getStudentInfo()```, ```getSchoolInfo()```, ```getReportCard()```, ```getGradeBook()```, ```getGradesbyGradingPeriod(grading_period)```, and ```getGradingInfobyPeriod()```.
+The current functions of the StudentVue class are ```getSchedule()```, ```getStudentContactInfo()```, ```getStudentInfo()```, ```getSchoolInfo()```, ```getReportCard()```, ```getGradeBook()```, ```getGradesbyGradingPeriod(grading_period)```, ```getGradingInfobyPeriod()```, and ```getCalendarbyMonth(month, year)```.
 
 ```getSchedule()``` returns a list of dictionaries with basic class information:
 ```
@@ -116,5 +116,14 @@ The current functions of the StudentVue class are ```getSchedule()```, ```getStu
             "Notes": " "
         }, ...
     ]
+}
+```
+
+```getCalendarbyMonth(month, year)``` takes a month and year as parameters and returns a dictionary with a list of dictionaries containing assignments for each day in the specified month:
+```
+{
+    "5/1": [
+        "World History : Ch. 18, 3 (p.578-582), Q #6, 7 & 8 - Score: 4",
+    ], ...
 }
 ```
