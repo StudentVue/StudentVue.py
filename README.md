@@ -1,20 +1,30 @@
 # Student Vue Scraper
-Python Tools for Scraping StudentVue Portals with Selenium
+Python Tools for Scraping StudentVue Portals with Selenium/ Robobrowser
 
 ## Warning
 
 The student portals for different districts that use StudentVue all have similar landing pages, but I'm not sure how well the rest the of the website is standardized in terms of design, so I'm unsure if this script will perform outside the StudentVue student portal that I tested on.
 
 # How to Use
-First, download the Chrome driver from the [official site](https://sites.google.com/a/chromium.org/chromedriver/downloads) and install selenium with ```pip install selenium```.
 
-Then, create a StudentVue object with your username, password, and the domain name of your StudentVue student portal. The program will use ```/usr/local/bin/chromedriver``` as the specified path for the Chrome driver as a default, you can specify a different one by including the ```driverpath``` parameter.
+To install all required packages, ```pip install -r requirements.txt```
 
-```
-sv = StudentVue('username', 'password', 'domain name', driverpath='path/to/driver')
-```
+There are two versions of the scraper, one written using Selenium, and one written using RoboBrowser. They are almost identical, though RoboBrowser is faster, while Selenium can scrape the calendar while RoboBrowser cannot.
 
-The current functions of the StudentVue class are ```getSchedule()```, ```getStudentContactInfo()```, ```getStudentInfo()```, ```getSchoolInfo()```, ```getReportCard()```, ```getGradeBook()```, ```getGradesbyGradingPeriod(grading_period)```, ```getGradingInfobyPeriod()```, and ```getCalendarbyMonth(month, year)```.
+For Selenium:
+    Download the Chrome driver from the [official site](https://sites.google.com/a/chromium.org/chromedriver/downloads).
+
+    ```from studentvuescraper import StudentVue```
+
+    Create a StudentVue object with your username, password, and the domain name of your StudentVue student portal. The program will use ```/usr/local/bin/chromedriver``` as the specified path for the Chrome driver as a default, you can specify a different one by including the ```driverpath``` parameter.
+
+    ```sv = StudentVue('username', 'password', 'domain name', driverpath='path/to/driver')```
+
+For Robobrowser:
+    ```from studentvuescraper import RoboStudentVue```
+    ```sv = RoboStudentVue('username', 'password', 'domain name')```
+
+The current functions of the both StudentVue classes are ```getSchedule()```, ```getStudentContactInfo()```, ```getStudentInfo()```, ```getSchoolInfo()```, ```getReportCard()```, ```getGradeBook()```, ```getGradesbyGradingPeriod(grading_period)``` and ```getGradingInfobyPeriod()```. The selenium version additionally has ```getCalendarbyMonth(month, year)```.
 
 ```getSchedule()``` returns a list of dictionaries with basic class information:
 ```
