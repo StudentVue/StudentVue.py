@@ -354,39 +354,30 @@ class RoboStudentVue:
             password (str): The password of the student portal account
             districtdomain (str): The domain name of your student portal
         """
-        self.username = username
-        self.password = password
         self.districtdomain = districtdomain
         if not self.districtdomain.startswith('https://'):
             self.districtdomain = 'https://' + self.districtdomain
         if not self.districtdomain.endswith('/'):
             self.districtdomain += '/'
         self.districtdomain = self.districtdomain + '{}'
-
-    def login(self):
-        """Logins into the student portal account
-        Returns:
-            A signed in browser object
-        """
-        browser = RoboBrowser(parser='html5lib')
-        browser.open(self.districtdomain.format(
+        self.browser = RoboBrowser(parser='html5lib')
+        self.browser.open(self.districtdomain.format(
             'Login_Student_PXP.aspx?regenerateSessionId=True'))
-        form = browser.get_form(id='Form1')
-        form['username'] = self.username
-        form['password'] = self.password
-        browser.submit_form(form)
-        return browser
+        form = self.browser.get_form(id='Form1')
+        form['username'] = username
+        form['password'] = password
+        self.browser.submit_form(form)
 
     def getSchedule(self):
         """Gets the student's schedule
         Returns:
             A list containing dictionaries with basic information for each class
         """
-        browser = self.login()
-        browser.open(self.districtdomain.format(
+        self.browser.open(self.districtdomain.format(
             'PXP_ClassSchedule.aspx?AGU=0'))
 
-        rows = browser.parsed.find('table', class_='info_tbl').find_all('tr')
+        rows = self.browser.parsed.find(
+            'table', class_='info_tbl').find_all('tr')
 
         class_data = []
 
@@ -404,10 +395,11 @@ class RoboStudentVue:
         Returns:
             A dictionary with contact information on the student
         """
-        browser = self.login()
-        browser.open(self.districtdomain.format('MyAccount_Student_PXP.aspx'))
+        self.browser.open(self.districtdomain.format(
+            'MyAccount_Student_PXP.aspx'))
 
-        rows = browser.parsed.find('table', class_='info_tbl').find_all('tr')
+        rows = self.browser.parsed.find(
+            'table', class_='info_tbl').find_all('tr')
 
         student_data = {}
 
@@ -424,10 +416,10 @@ class RoboStudentVue:
         Returns:
             A dictionary with other information on the student
         """
-        browser = self.login()
-        browser.open(self.districtdomain.format('PXP_Student.aspx?AGU=0'))
+        self.browser.open(self.districtdomain.format('PXP_Student.aspx?AGU=0'))
 
-        rows = browser.parsed.find('table', class_='info_tbl').find_all('tr')
+        rows = self.browser.parsed.find(
+            'table', class_='info_tbl').find_all('tr')
 
         student_data = {}
 
@@ -444,11 +436,11 @@ class RoboStudentVue:
         Returns:
             A dictionary with information on the student's school
         """
-        browser = self.login()
-        browser.open(self.districtdomain.format(
+        self.browser.open(self.districtdomain.format(
             'PXP_SchoolInformation.aspx?AGU=0'))
 
-        rows = browser.parsed.find('table', class_='info_tbl').find_all('tr')
+        rows = self.browser.parsed.find(
+            'table', class_='info_tbl').find_all('tr')
 
         school_data = {}
 
@@ -466,10 +458,10 @@ class RoboStudentVue:
             A list containing dictionaries with basic class
             information and the letter grade from the last report card
         """
-        browser = self.login()
-        browser.open(self.districtdomain.format('PXP_Grades.aspx?AGU=0'))
+        self.browser.open(self.districtdomain.format('PXP_Grades.aspx?AGU=0'))
 
-        rows = browser.parsed.find('table', class_='info_tbl').find_all('tr')
+        rows = self.browser.parsed.find(
+            'table', class_='info_tbl').find_all('tr')
 
         rows.remove(rows[1])
 
@@ -492,10 +484,11 @@ class RoboStudentVue:
             A list containing dictionaries with basic class
             information and the current grading period's grades out of 100
         """
-        browser = self.login()
-        browser.open(self.districtdomain.format('PXP_Gradebook.aspx?AGU=0'))
+        self.browser.open(self.districtdomain.format(
+            'PXP_Gradebook.aspx?AGU=0'))
 
-        rows = browser.parsed.find('table', class_='info_tbl').find_all('tr')
+        rows = self.browser.parsed.find(
+            'table', class_='info_tbl').find_all('tr')
 
         class_data = []
 
@@ -525,15 +518,16 @@ class RoboStudentVue:
             A list containing dictionaries with basic class
             information and final grades from that grading period out of 100
         """
-        browser = self.login()
-        browser.open(self.districtdomain.format('PXP_Gradebook.aspx?AGU=0'))
+        self.browser.open(self.districtdomain.format(
+            'PXP_Gradebook.aspx?AGU=0'))
 
-        for link in browser.parsed.find_all('a'):
+        for link in self.browser.parsed.find_all('a'):
             if 'P{}'.format(grading_period) in link.text:
-                browser.follow_link(link)
+                self.browser.follow_link(link)
                 break
 
-        rows = browser.parsed.find('table', class_='info_tbl').find_all('tr')
+        rows = self.browser.parsed.find(
+            'table', class_='info_tbl').find_all('tr')
 
         class_data = []
 
@@ -562,18 +556,18 @@ class RoboStudentVue:
         Returns:
             Dictionary with a grading summary and recent assignments
         """
-        browser = self.login()
-        browser.open(self.districtdomain.format('PXP_Gradebook.aspx?AGU=0'))
+        self.browser.open(self.districtdomain.format(
+            'PXP_Gradebook.aspx?AGU=0'))
 
-        for link in browser.parsed.find_all('a'):
+        for link in self.browser.parsed.find_all('a'):
             if link.text == str(period):
-                browser.follow_link(link)
+                self.browser.follow_link(link)
                 break
 
         grading_data = {}
         grading_data['Summary'] = []
 
-        tables = browser.parsed.find_all('table', class_='info_tbl')
+        tables = self.browser.parsed.find_all('table', class_='info_tbl')
         rows = tables[0].find_all('tr')
 
         for row in rows[1:]:
@@ -600,7 +594,7 @@ class RoboStudentVue:
             for column in row.find_all('td'):
                 if rows[1].find_all('td')[row.find_all('td').index(column)].text == 'Resources':
                     continue
-                if rows[1].find_all('td')[row.find_all('td').index(column)].text == 'Score':
+                elif rows[1].find_all('td')[row.find_all('td').index(column)].text == 'Score':
                     continue
                 this_assignment_data[rows[1].find_all(
                     'td')[row.find_all('td').index(column)].text] = column.text

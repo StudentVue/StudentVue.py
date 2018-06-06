@@ -11,7 +11,7 @@ There are two implementations of the scraper, one written using Selenium, and on
 
 Download the Chrome driver from the [official site](https://sites.google.com/a/chromium.org/chromedriver/downloads).
 
-```from studentvue.scraper import StudentVue```
+```from studentvue import StudentVue```
 
 Create a StudentVue object with your username, password, and the domain name of your StudentVue student portal. The program will use ```/usr/local/bin/chromedriver``` as the specified path for the Chrome driver as a default, you can specify a different one by including the ```driverpath``` parameter.
 
@@ -19,7 +19,7 @@ Create a StudentVue object with your username, password, and the domain name of 
 
 ## For Robobrowser:
     
-```from studentvue.scraper import RoboStudentVue```
+```from studentvue import RoboStudentVue```
 
 ```sv = RoboStudentVue('username', 'password', 'domain name')```
 
