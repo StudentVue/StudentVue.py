@@ -196,6 +196,9 @@ class StudentVue:
         browser = self.login()
         browser.get(self.districtdomain.format('PXP_Gradebook.aspx?AGU=0'))
 
+        browser.find_element_by_xpath(
+            "//a[contains(text(), 'P{}')]".format(grading_period)).click()
+
         return self.parseGradeBook(browser)
 
     def getGradingInfobyPeriod(self, period):
@@ -306,7 +309,7 @@ class StudentVue:
                 if attribute != 'Resources':
                     this_class_data[attribute] = classes[raw_data[0].index(
                         attribute)]
-                    if attribute.startswith('P'):
+                    if attribute.startswith('P') or attribute == 'Spring' or attribute == 'Fall':
                         this_class_data[attribute] = float("".join(
                             i for i in classes[raw_data[0].index(
                                 attribute)] if i in ".0123456789"))
