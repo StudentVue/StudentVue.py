@@ -183,33 +183,7 @@ class StudentVue:
         browser = self.login()
         browser.get(self.districtdomain.format('PXP_Gradebook.aspx?AGU=0'))
 
-        table = browser.find_element_by_class_name('info_tbl')
-        rows = table.find_element_by_tag_name('tbody')
-
-        raw_data = [[data.text for data in row.find_elements_by_tag_name(
-            'td')] for row in rows.find_elements_by_tag_name('tr')]
-
-        class_data = []
-
-        for classes in raw_data[1:]:
-            this_class_data = {}
-            for attribute in raw_data[0]:
-                if attribute == 'Resources' or attribute == 'Room Name':
-                    continue
-                this_class_data[attribute] = classes[raw_data[0].index(
-                    attribute)]
-                if attribute != 'Period':
-                    if attribute != 'Course Title':
-                        if attribute != 'Resources':
-                            if attribute != 'Teacher':
-                                if attribute != 'Room Name':
-                                    this_class_data[attribute] = float("".join(
-                                        i for i in classes[raw_data[0].index(
-                                            attribute)] if i in ".0123456789"))
-            class_data.append(this_class_data)
-
-        browser.close()
-        return class_data
+        return self.parseGradeBook(browser)
 
     def getGradesbyGradingPeriod(self, grading_period):
         """Gets the student's current grades for the specified grading period
@@ -222,36 +196,7 @@ class StudentVue:
         browser = self.login()
         browser.get(self.districtdomain.format('PXP_Gradebook.aspx?AGU=0'))
 
-        browser.find_element_by_xpath(
-            "//a[contains(text(), 'P{}')]".format(grading_period)).click()
-
-        table = browser.find_element_by_class_name('info_tbl')
-        rows = table.find_element_by_tag_name('tbody')
-
-        raw_data = [[data.text for data in row.find_elements_by_tag_name(
-            'td')] for row in rows.find_elements_by_tag_name('tr')]
-
-        class_data = []
-
-        for classes in raw_data[1:]:
-            this_class_data = {}
-            for attribute in raw_data[0]:
-                if attribute == 'Resources' or attribute == 'Room Name':
-                    continue
-                this_class_data[attribute] = classes[raw_data[0].index(
-                    attribute)]
-                if attribute != 'Period':
-                    if attribute != 'Course Title':
-                        if attribute != 'Resources':
-                            if attribute != 'Teacher':
-                                if attribute != 'Room Name':
-                                    this_class_data[attribute] = float("".join(
-                                        i for i in classes[raw_data[0].index(
-                                            attribute)] if i in ".0123456789"))
-            class_data.append(this_class_data)
-
-        browser.close()
-        return class_data
+        return self.parseGradeBook(browser)
 
     def getGradingInfobyPeriod(self, period):
         """Gets grading information on the class
@@ -344,6 +289,32 @@ class StudentVue:
 
         browser.close()
         return calendar_data
+
+    def parseGradeBook(self, browser):
+        "Internal function to reduce duplicate code"
+        table = browser.find_element_by_class_name('info_tbl')
+        rows = table.find_element_by_tag_name('tbody')
+
+        raw_data = [[data.text for data in row.find_elements_by_tag_name(
+            'td')] for row in rows.find_elements_by_tag_name('tr')]
+
+        class_data = []
+
+        for classes in raw_data[1:]:
+            this_class_data = {}
+            for attribute in raw_data[0]:
+                if attribute != 'Resources':
+                    this_class_data[attribute] = classes[raw_data[0].index(
+                        attribute)]
+                    if attribute.startswith('P'):
+                        this_class_data[attribute] = float("".join(
+                            i for i in classes[raw_data[0].index(
+                                attribute)] if i in ".0123456789"))
+            class_data.append(this_class_data)
+
+        browser.close()
+
+        return class_data
 
 
 class RoboStudentVue:
@@ -487,28 +458,7 @@ class RoboStudentVue:
         self.browser.open(self.districtdomain.format(
             'PXP_Gradebook.aspx?AGU=0'))
 
-        rows = self.browser.parsed.find(
-            'table', class_='info_tbl').find_all('tr')
-
-        class_data = []
-
-        for classes in rows[1:]:
-            this_class_data = {}
-            for attribute in rows[0].find_all('td'):
-                if attribute.text == 'Resources':
-                    continue
-                this_class_data[attribute.text] = classes.find_all(
-                    'td')[rows[0].find_all('td').index(attribute)].text
-                if attribute.text != 'Period':
-                    if attribute.text != 'Course Title':
-                        if attribute.text != 'Room Name':
-                            if attribute.text != 'Teacher':
-                                this_class_data[attribute.text] = float("".join(
-                                    i for i in classes.find_all(
-                                        'td')[rows[0].find_all('td').index(attribute)].text if i in ".0123456789"))
-            class_data.append(this_class_data)
-
-        return class_data
+        return self.parseGradeBook()
 
     def getGradesbyGradingPeriod(self, grading_period):
         """Gets the student's current grades for the specified grading period
@@ -526,28 +476,7 @@ class RoboStudentVue:
                 self.browser.follow_link(link)
                 break
 
-        rows = self.browser.parsed.find(
-            'table', class_='info_tbl').find_all('tr')
-
-        class_data = []
-
-        for classes in rows[1:]:
-            this_class_data = {}
-            for attribute in rows[0].find_all('td'):
-                if attribute.text == 'Resources':
-                    continue
-                this_class_data[attribute.text] = classes.find_all(
-                    'td')[rows[0].find_all('td').index(attribute)].text
-                if attribute.text != 'Period':
-                    if attribute.text != 'Course Title':
-                        if attribute.text != 'Room Name':
-                            if attribute.text != 'Teacher':
-                                this_class_data[attribute.text] = float("".join(
-                                    i for i in classes.find_all(
-                                        'td')[rows[0].find_all('td').index(attribute)].text if i in ".0123456789"))
-            class_data.append(this_class_data)
-
-        return class_data
+        return self.parseGradeBook
 
     def getGradingInfobyPeriod(self, period):
         """Gets grading information on the class
@@ -602,3 +531,24 @@ class RoboStudentVue:
             grading_data['Assignments'].append(this_assignment_data)
 
         return grading_data
+
+    def parseGradeBook(self):
+        "Internal function to reduce duplicate code"
+        rows = self.browser.parsed.find(
+            'table', class_='info_tbl').find_all('tr')
+
+        class_data = []
+
+        for classes in rows[1:]:
+            this_class_data = {}
+            for attribute in rows[0].find_all('td'):
+                if attribute.text != 'Resources':
+                    this_class_data[attribute.text] = classes.find_all(
+                        'td')[rows[0].find_all('td').index(attribute)].text
+                    if attribute.text.startswith('P') or attribute.text == 'Spring' or attribute.text == 'Fall':
+                        this_class_data[attribute.text] = float("".join(
+                            i for i in classes.find_all('td')[rows[0].find_all('td').index(
+                                attribute)].text if i in ".0123456789"))
+            class_data.append(this_class_data)
+
+        return class_data
