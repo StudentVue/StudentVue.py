@@ -5,9 +5,9 @@ Python Tool for Scraping Data from StudentVue Portals with Robobrowser
 
 ```pip install studentvue```
     
-```from studentvue import RoboStudentVue```
+```from studentvue import StudentVue```
 
-```sv = RoboStudentVue('username', 'password', 'domain name')```
+```sv = StudentVue('username', 'password', 'domain name')```
 
 ## Scraper Usage
 
