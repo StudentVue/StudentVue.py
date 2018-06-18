@@ -1,13 +1,18 @@
 # Student Vue Scraper
-Python Tool for Scraping Data from StudentVue Portals with Robobrowser
+This repository provides a easy way to access data from StudentVue portals in Python programs.
 
 # How to Use
 
-```pip install studentvue```
-    
-```from studentvue import StudentVue```
+```pip install studentvue``` or clone / download the repository and ```python setup.py install```.
 
-```sv = StudentVue('username', 'password', 'domain name')```
+```
+from studentvue import StudentVue
+```
+
+```
+sv = StudentVue('username', 'password', 'domain name')
+```
+
 
 ## Scraper Usage
 
@@ -115,3 +120,8 @@ The current functions of the both StudentVue classes are ```getSchedule()```, ``
     ]
 }
 ```
+
+# TODO
+
+- Write tests
+
