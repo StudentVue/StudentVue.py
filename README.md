@@ -1,23 +1,9 @@
 # Student Vue Scraper
-Python Package for Scraping StudentVue Portals with Selenium/ Robobrowser
+Python Tool for Scraping Data from StudentVue Portals with Robobrowser
 
 # How to Use
 
 ```pip install studentvue```
-
-There are two implementations of the scraper, one written using Selenium, and one written using RoboBrowser. They are almost identical, though RoboBrowser is faster, while Selenium can scrape the calendar and RoboBrowser cannot.
-
-## For Selenium:
-
-Download the Chrome driver from the [official site](https://sites.google.com/a/chromium.org/chromedriver/downloads).
-
-```from studentvue import StudentVue```
-
-Create a StudentVue object with your username, password, and the domain name of your StudentVue student portal. The program will use ```/usr/local/bin/chromedriver``` as the specified path for the Chrome driver as a default, you can specify a different one by including the ```driverpath``` parameter.
-
-```sv = StudentVue('username', 'password', 'domain name', driverpath='path/to/driver')```
-
-## For Robobrowser:
     
 ```from studentvue import RoboStudentVue```
 
@@ -25,7 +11,7 @@ Create a StudentVue object with your username, password, and the domain name of 
 
 ## Scraper Usage
 
-The current functions of the both StudentVue classes are ```getSchedule()```, ```getStudentContactInfo()```, ```getStudentInfo()```, ```getSchoolInfo()```, ```getReportCard()```, ```getGradeBook()```, ```getGradesbyGradingPeriod(grading_period)``` and ```getGradingInfobyPeriod()```. The selenium version additionally has ```getCalendarbyMonth(month, year)```.
+The current functions of the both StudentVue classes are ```getSchedule()```, ```getStudentContactInfo()```, ```getStudentInfo()```, ```getSchoolInfo()```, ```getReportCard()```, ```getGradeBook()```, ```getGradesbyGradingPeriod(grading_period)``` and ```getGradingInfobyPeriod()```.
 
 ```getSchedule()``` returns a list of dictionaries with basic class information:
 ```
@@ -127,14 +113,5 @@ The current functions of the both StudentVue classes are ```getSchedule()```, ``
             "Notes": " "
         }, ...
     ]
-}
-```
-
-```getCalendarbyMonth(month, year)``` takes a month and year as parameters and returns a dictionary with a list of dictionaries containing assignments for each day in the specified month:
-```
-{
-    "5/1": [
-        "World History : Ch. 18, 3 (p.578-582), Q #6, 7 & 8 - Score: 4",
-    ], ...
 }
 ```
