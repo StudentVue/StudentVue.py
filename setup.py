@@ -8,5 +8,5 @@ setup(
     author='Kai Chang',
     url='https://github.com/kajchang/studentvuescraper',
     license='MIT',
-    install_requires=['selenium', 'robobrowser']
+    install_requires=['robobrowser']
 )
