@@ -1,5 +1,6 @@
 from robobrowser import RoboBrowser
 
+
 class StudentVue:
     def __init__(self, username, password, districtdomain):
         """The StudentVue scraper object.
@@ -14,7 +15,7 @@ class StudentVue:
         if not self.districtdomain.endswith('/'):
             self.districtdomain += '/'
         self.districtdomain = self.districtdomain + '{}'
-        self.browser = RoboBrowser(parser='html5lib')
+        self.browser = RoboBrowser(parser='html.parser')
         self.browser.open(self.districtdomain.format(
             'Login_Student_PXP.aspx?regenerateSessionId=True'))
         form = self.browser.get_form(id='Form1')

@@ -1,4 +1,7 @@
 # Student Vue Scraper
+![travis](https://travis-ci.org/kajchang/studentvuescraper.svg?branch=master)
+![PyPI version](https://badge.fury.io/py/StudentVue.svg)
+
 This repository provides a easy way to access data from StudentVue portals in Python programs.
 
 # How to Use
