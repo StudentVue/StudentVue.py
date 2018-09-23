@@ -1,1 +1,1 @@
-from .scraper import StudentVue
+from .studentvue import StudentVue

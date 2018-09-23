@@ -1,1 +1,2 @@
-robobrowser
+requests==2.19.1
+beautifulsoup===4.6.3

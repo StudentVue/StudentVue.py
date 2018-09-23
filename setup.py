@@ -12,5 +12,6 @@ setup(
     long_description=open(os.path.join(os.path.abspath(
         os.path.dirname(__file__)), 'README.md')).read(),
     long_description_content_type="text/markdown",
-    install_requires=['robobrowser']
+    install_requires=[open(os.path.join(os.path.abspath(
+        os.path.dirname(__file__)), 'requirements.txt')).read().split('\n')[:-1]]
 )
