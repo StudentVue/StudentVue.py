@@ -3,6 +3,10 @@ from bs4 import BeautifulSoup
 
 from urllib.parse import urlparse
 
+import re
+
+import models
+
 
 class StudentVue:
     def __init__(self, username, password, districtdomain):
@@ -33,3 +37,23 @@ class StudentVue:
 
         if resp.url != 'https://{}/Home_PXP2.aspx'.format(self.districtdomain):
             raise ValueError('Incorrect Username or Password')
+
+        home_page = BeautifulSoup(resp.text, 'html.parser')
+
+        self.id_ = re.match(
+            'ID: ([0-9]+)', home_page.find(class_='student-id').text.strip()).group(1)
+        self.name = home_page.find(class_='student-name').text
+
+        self.school_name = home_page.find(class_='school').text
+        self.school_phone = home_page.find(class_='phone').text
+
+        self.picture_url = 'https://{}/{}'.format(self.districtdomain,
+                                                  home_page.find(alt='Student Photo')['src'])
+
+    def getSchedule(self):
+        schedule_page = BeautifulSoup(self.session.get(
+            'https://{}/PXP2_Gradebook.aspx?AGU=0'.format(self.districtdomain)).text, 'html.parser')
+
+        schedule_table = schedule_page.find('table')
+
+        return [models.Class(class_.find_all('td')[2].text, class_.find_all('td')[3].find('button').text, re.match('Room: ([a-zA-z0-9]+)', class_.find(class_='teacher-room').text.strip()).group(1), models.Teacher(class_.find('div', class_='teacher').text, re.search('([a-zA-z0-9]+@[a-zA-z]+.[a-zA-z]+)', class_.find('span', class_='teacher').find('a')['href']).group(1))) for class_ in schedule_table.find('tbody').find_all('tr', class_=False)]
