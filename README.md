@@ -20,18 +20,17 @@ sv = StudentVue('username', 'password', 'domain name') # e.g. portal.sfusd.edu
 >>> classes = sv.getClasses()
 >>> classes
 [
-    Period 2 CCSS Algebra 2A Taught by XXX XXX in Room XXX with a Grade of XX.X%,
-    Period 3 Chemistry A H Taught by XXX XXX in Room XXX with a Grade of XX.X%,
+    'Period 2 CCSS Algebra 2A Taught by XXX XXX in Room XXX with a Grade of XX.X%',
+    'Period 3 Chemistry A H Taught by XXX XXX in Room XXX with a Grade of XX.X%',
     ...
-    Period 7 AP Euro Hist A Taught by XXX XXX in Room XXX with a Grade of XX.X%,
-    Period 8 PE 2A Taught by XXX XXX in Room XXX with a Grade of XX.X%
+    'Period 7 AP Euro Hist A Taught by XXX XXX in Room XXX with a Grade of XX.X%',
+    'Period 8 PE 2A Taught by XXX XXX in Room XXX with a Grade of XX.X%'
 ]
 
 # classes and teachers are both rich models
 
 >>> classes[0].room
 XXX
-
 
 >>> classes[0].teacher.email
 XXX@XXX.XXX
@@ -65,4 +64,3 @@ XXX@XXX.XXX
 - Finish Scraper
 
 - Write tests
-
