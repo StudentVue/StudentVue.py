@@ -7,7 +7,8 @@ class Class:
         self.grade = grade
 
     def __repr__(self):
-        return 'Period {period} {name} Taught by {teacher} in Room {room} with a Grade of {grade}'.format(**self.__dict__)
+        return 'Period {period} {name} Taught by {teacher} in Room {room} with a Grade of {grade}%'.format(
+            **self.__dict__)
 
     def __str__(self):
         return self.__repr__()

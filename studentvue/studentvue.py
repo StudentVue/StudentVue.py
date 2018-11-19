@@ -41,7 +41,7 @@ class StudentVue:
         home_page = BeautifulSoup(resp.text, 'html.parser')
 
         self.id_ = re.match(
-            'ID: ([0-9]+)', home_page.find(class_='student-id').text.strip()).group(1)
+            r'ID: ([0-9]+)', home_page.find(class_='student-id').text.strip()).group(1)
         self.name = home_page.find(class_='student-name').text
 
         self.school_name = home_page.find(class_='school').text
@@ -56,17 +56,59 @@ class StudentVue:
 
         classes_table = classes_page.find('table')
 
-        print(classes_table.find_all('tr', class_=False))
-
         return [
             models.Class(
                 class_.find_all('td')[2].text,
                 class_.find_all('td')[3].find('button').text,
-                re.match('Room: ([a-zA-z0-9]+)', class_.find(class_='teacher-room').text.strip()).group(1),
+                re.match(r'Room: ([a-zA-z0-9]+)', class_.find(class_='teacher-room').text.strip()).group(1),
                 models.Teacher(
                     class_.find('div', class_='teacher').text,
-                    re.search('([a-zA-z0-9]+@[a-zA-z]+.[a-zA-z]+)', class_.find('span', class_='teacher').find('a')['href']).group(1)
+                    re.search(r'([a-zA-z0-9]+@[a-zA-z]+.[a-zA-z]+)', class_.find('span', class_='teacher').find('a')['href']).group(1)
                 ),
                 float(class_.find(class_='score').text.replace('%', ''))
             ) for class_ in classes_table.find('tbody').find_all('tr', class_=False)
         ]
+
+    def getStudentInfo(self):
+        student_info_page = BeautifulSoup(self.session.get(
+            'https://{}/PXP2_Student.aspx?AGU=0'.format(self.districtdomain)).text, 'html.parser')
+
+        student_info_table = student_info_page.find('table', class_='info_tbl')
+
+        tds = student_info_table.find_all('td')
+
+        keys = [td.span.text for td in tds]
+
+        for td in tds:
+            td.span.clear()
+
+        values = [td.text for td in tds]
+
+        return {
+            k: v for (k, v) in zip(keys, values)
+        }
+
+    def getSchoolInfo(self):
+        school_info_page = BeautifulSoup(self.session.get(
+            'https://{}/PXP2_SchoolInformation.aspx?AGU=0'.format(self.districtdomain)).text, 'html.parser')
+
+        school_info_table = school_info_page.find('table')
+
+        tds = school_info_table.find_all('td')
+
+        keys = [td.span.text for td in tds]
+
+        for td in tds:
+            td.span.clear()
+
+        values = [
+            td.text if len(td.find_all('span')) == 1 else  models.Teacher(
+                td.find_all('span')[1].text,
+                re.search(r'([a-zA-z0-9]+@[a-zA-z]+.[a-zA-z]+)', td.find_all('span')[1].find('a')['href']).group(1)
+            )
+            for td in tds
+        ]
+
+        return {
+            k: v for (k, v) in zip(keys, values)
+        }
