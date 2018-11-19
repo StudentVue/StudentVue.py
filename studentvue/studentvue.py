@@ -50,6 +50,9 @@ class StudentVue:
         self.picture_url = 'https://{}/{}'.format(self.districtdomain,
                                                   home_page.find(alt='Student Photo')['src'])
 
+        self.student_guid = re.match(r'Photos/[A-Z0-9]+/([A-Z0-9-]+)_Photo\.PNG',
+                                     home_page.find(alt='Student Photo')['src']).group(1)
+
     def getClasses(self):
         classes_page = BeautifulSoup(self.session.get(
             'https://{}/PXP2_Gradebook.aspx?AGU=0'.format(self.districtdomain)).text, 'html.parser')
