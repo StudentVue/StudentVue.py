@@ -50,18 +50,23 @@ class StudentVue:
         self.picture_url = 'https://{}/{}'.format(self.districtdomain,
                                                   home_page.find(alt='Student Photo')['src'])
 
-    def getSchedule(self):
-        schedule_page = BeautifulSoup(self.session.get(
+    def getClasses(self):
+        classes_page = BeautifulSoup(self.session.get(
             'https://{}/PXP2_Gradebook.aspx?AGU=0'.format(self.districtdomain)).text, 'html.parser')
 
-        schedule_table = schedule_page.find('table')
+        classes_table = classes_page.find('table')
 
-        return [models.Class(class_.find_all('td')[2].text, class_.find_all('td')[3].find('button').text, re.match('Room: ([a-zA-z0-9]+)', class_.find(class_='teacher-room').text.strip()).group(1), models.Teacher(class_.find('div', class_='teacher').text, re.search('([a-zA-z0-9]+@[a-zA-z]+.[a-zA-z]+)', class_.find('span', class_='teacher').find('a')['href']).group(1))) for class_ in schedule_table.find('tbody').find_all('tr', class_=False)]
+        print(classes_table.find_all('tr', class_=False))
 
-    def getGrade(self, class_):
-        gradebook_page = BeautifulSoup(self.session.get(
-            'https://{}/PXP2_Gradebook.aspx?AGU=0'.format(self.districtdomain)).text, 'html.parser')
-
-        teacher_tr = gradebook_page.find(text=class_.teacher.name).parent.parent.parent
-
-        return float(teacher_tr.find(class_='score').text[:-1])
+        return [
+            models.Class(
+                class_.find_all('td')[2].text,
+                class_.find_all('td')[3].find('button').text,
+                re.match('Room: ([a-zA-z0-9]+)', class_.find(class_='teacher-room').text.strip()).group(1),
+                models.Teacher(
+                    class_.find('div', class_='teacher').text,
+                    re.search('([a-zA-z0-9]+@[a-zA-z]+.[a-zA-z]+)', class_.find('span', class_='teacher').find('a')['href']).group(1)
+                ),
+                float(class_.find(class_='score').text.replace('%', ''))
+            ) for class_ in classes_table.find('tbody').find_all('tr', class_=False)
+        ]
