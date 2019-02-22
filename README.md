@@ -1,4 +1,4 @@
-# Student Vue Scraper
+# StudentVue API
 ![travis](https://travis-ci.org/kajchang/StudentVue.svg?branch=master)
 ![PyPI version](https://badge.fury.io/py/StudentVue.svg)
 

@@ -3,6 +3,7 @@ from bs4 import BeautifulSoup
 
 from urllib.parse import urlparse
 
+import json
 import re
 
 import studentvue.models as models
@@ -59,17 +60,31 @@ class StudentVue:
 
         classes_table = classes_page.find('table')
 
+        class_data = json.loads(
+            re.search(r'PXP\.GBFocusData = ({.+});', classes_page.find_all('script')[1].text).group(1)
+        )['GradingPeriods']
+
+        grading_periods = [
+            models.GradingPeriod(
+                grading_period['GU'],
+                grading_period['Name']
+            ) for grading_period in class_data
+        ]
+
         return [
             models.Class(
-                class_.find_all('td')[2].text,
-                class_.find_all('td')[3].find('button').text,
+                int(class_.find('button').text[0]),
+                class_.find('button').text[3:],
                 re.match(r'Room: ([a-zA-z0-9]+)', class_.find(class_='teacher-room').text.strip()).group(1),
                 models.Teacher(
                     class_.find('div', class_='teacher').text,
                     re.search(r'([a-zA-z0-9]+@[a-zA-z]+.[a-zA-z]+)', class_.find('span', class_='teacher').find('a')['href']).group(1)
                 ),
-                float(class_.find(class_='score').text.replace('%', ''))
-            ) for class_ in classes_table.find('tbody').find_all('tr', class_=False)
+                grading_periods,
+                int(class_['data-guid']),
+                int(class_data[0]['schoolID']),
+                class_data[0]['OrgYearGU']
+            ) for class_ in classes_table.find('tbody').find_all('tr', {'data-mark-gu': False})
         ]
 
     def getStudentInfo(self):
@@ -105,8 +120,8 @@ class StudentVue:
             td.span.clear()
 
         values = [
-            td.text if len(td.find_all('span')) == 1 else  models.Teacher(
-                td.find_all('span')[1].text,
+            td.text if len(td.find_all('span')) == 1 else models.Teacher(
+                td.find_all('span')[1].text.strip(),
                 re.search(r'([a-zA-z0-9]+@[a-zA-z]+.[a-zA-z]+)', td.find_all('span')[1].find('a')['href']).group(1)
             )
             for td in tds
@@ -115,3 +130,30 @@ class StudentVue:
         return {
             k: v for (k, v) in zip(keys, values)
         }
+
+    """
+        def getGrades(self, class_, grading_period):
+        grading_info = self.session.post('https://{}/service/PXP2Communication.asmx/LoadControl'.format(self.districtdomain),
+            data={
+                "request":
+                    {
+                        "control": "Gradebook_ClassDetails",
+                        "parameters": {
+                            "schoolID": class_.school_id,
+                            "classID": class_.class_id,
+                            "gradePeriodGU": grading_period.period_guid,
+                            "subjectID": -1,
+                            "teacherID": -1,
+                            "markPeriodGU": None,
+                            "assignmentID": -1,
+                            "standardIdentifier": None,
+                            "viewName": None,
+                            "studentGU": self.student_guid,
+                            "AGU": "0",
+                            "OrgYearGU": class_.org_id
+                        }
+                    }
+            }
+        )
+
+        return grading_info"""
