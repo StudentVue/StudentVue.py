@@ -17,8 +17,9 @@ class StudentVue:
             password (str): The password of the student portal account
             districtdomain (str): The domain name of your student portal
         """
-        self.districtdomain = urlparse(districtdomain).netloc if urlparse(
-            districtdomain).netloc else urlparse(districtdomain).path
+        self.districtdomain = urlparse(districtdomain).netloc + urlparse(districtdomain).path
+        if self.districtdomain[len(self.districtdomain) - 1] == '/':
+            self.districtdomain = self.districtdomain[:-1]
 
         self.session = requests.Session()
 
