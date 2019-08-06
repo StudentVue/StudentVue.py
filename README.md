@@ -1,6 +1,6 @@
 # StudentVue API
 ![travis](https://travis-ci.org/kajchang/StudentVue.svg?branch=master)
-![PyPI version](https://badge.fury.io/py/StudentVue.svg)
+![PyPI version](https://badge.fury.io/py/studentvue.svg)
 
 This repository provides a easy way to access data from StudentVue portals in Python programs.
 
