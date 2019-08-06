@@ -78,7 +78,7 @@ class StudentVue:
                 re.match(r'Room: ([a-zA-z0-9]+)', class_.find(class_='teacher-room').text.strip()).group(1),
                 models.Teacher(
                     class_.find('div', class_='teacher').text,
-                    re.search(r'([a-zA-z0-9]+@[a-zA-z]+.[a-zA-z]+)', class_.find('span', class_='teacher').find('a')['href']).group(1)
+                    re.search(r'([a-zA-z0-9]+@[a-zA-z]+.[a-zA-z]+)', class_.find('span', class_='teacher').find('a')['href']).group(1) if re.search(r'([a-zA-z0-9]+@[a-zA-z]+.[a-zA-z]+)', class_.find('span', class_='teacher').find('a')['href']) else class_.find('span', class_='teacher').find('a')['href']
                 ),
                 grading_periods,
                 int(class_['data-guid']),
@@ -122,7 +122,7 @@ class StudentVue:
         values = [
             td.text if len(td.find_all('span')) == 1 else models.Teacher(
                 td.find_all('span')[1].text.strip(),
-                re.search(r'([a-zA-z0-9]+@[a-zA-z]+.[a-zA-z]+)', td.find_all('span')[1].find('a')['href']).group(1)
+                re.search(r'([a-zA-z0-9]+@[a-zA-z]+.[a-zA-z]+)', td.find_all('span')[1].find('a')['href']).group(1) if re.search(r'([a-zA-z0-9]+@[a-zA-z]+.[a-zA-z]+)', td.find_all('span')[1].find('a')['href']) else td.find_all('span')[1].find('a')['href']
             )
             for td in tds
         ]
