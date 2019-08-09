@@ -4,17 +4,16 @@
 
 This repository provides a easy way to access data from StudentVue portals in Python programs.
 
-# Logging In
+## Logging In
 
 `pip install studentvue` or clone / download the repository and `python setup.py install`.
 
 ```python
 from studentvue import StudentVue
-sv = StudentVue('username', 'password', 'domain name') # e.g. portal.sfusd.edu
+sv = StudentVue('username', 'password', 'domain name') 
 ```
 
-
-## Methods and Attributes
+## Methods
 
 ```python
 >>> classes = sv.getClasses()
@@ -27,7 +26,7 @@ sv = StudentVue('username', 'password', 'domain name') # e.g. portal.sfusd.edu
     'Period 8 PE 2A Taught by XXX XXX in Room XXX with a Grade of XX.X%'
 ]
 
-# classes and teachers are both rich models
+# classes and teachers are both objects
 
 >>> classes[0].room
 XXX
@@ -48,7 +47,7 @@ XXX@XXX.XXX
 
 ```python
 >>> sv.getSchoolInfo()
-# Principal, if supplied, will also be converted to a rich model
+# Principal, if supplied, will also be converted to a Teacher object
 {
     'Principal': Andrew Ishibashi,
     'School Name': 'Lowell HS',
@@ -59,7 +58,11 @@ XXX@XXX.XXX
 }
 ```
 
-# TODO
+## Bugs and Contributing
+
+The content and formatting of pages may vary from district to district, so the same parsing strategies might fail. If you find an instance of this, or have a general improvement you can [raise a new issue](https://github.com/kajchang/StudentVue/issues/new) and/or [open a pull request](https://github.com/kajchang/StudentVue/compare).
+
+## TODO
 
 - Finish Scraper
 
