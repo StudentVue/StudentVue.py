@@ -90,7 +90,7 @@ class StudentVue:
 
     def getStudentInfo(self):
         student_info_page = BeautifulSoup(self.session.get(
-            'https://{}/PXP2_Student.aspx?AGU=0'.format(self.districtdomain)).text, 'html.parser')
+            'https://{}/PXP2_MyAccount.aspx?AGU=0'.format(self.districtdomain)).text, 'html.parser')
 
         student_info_table = student_info_page.find('table', class_='info_tbl')
 
@@ -101,7 +101,7 @@ class StudentVue:
         for td in tds:
             td.span.clear()
 
-        values = [td.text for td in tds]
+        values = [td.get_text(separator='\n') for td in tds]
 
         return {
             k: v for (k, v) in zip(keys, values)
@@ -121,7 +121,7 @@ class StudentVue:
             td.span.clear()
 
         values = [
-            td.text if len(td.find_all('span')) == 1 else models.Teacher(
+            td.get_text(separator='\n') if len(td.find_all('span')) == 1 else models.Teacher(
                 td.find_all('span')[1].text.strip(),
                 re.search(r'([a-zA-z0-9]+@[a-zA-z]+.[a-zA-z]+)', td.find_all('span')[1].find('a')['href']).group(1) if re.search(r'([a-zA-z0-9]+@[a-zA-z]+.[a-zA-z]+)', td.find_all('span')[1].find('a')['href']) else td.find_all('span')[1].find('a')['href']
             )
