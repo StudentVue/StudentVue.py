@@ -7,6 +7,7 @@ import json
 import re
 
 import studentvue.models as models
+import studentvue.helpers as helpers
 
 
 class StudentVue:
@@ -26,10 +27,7 @@ class StudentVue:
         login_page = BeautifulSoup(self.session.get(
             'https://{}/PXP2_Login_Student.aspx?regenerateSessionId=True'.format(self.districtdomain)).text, 'html.parser')
 
-        form = login_page.find(id='aspnetForm')
-
-        form_data = {k: v for (k, v) in zip([input_['name'] for input_ in form.find_all(
-            'input')], [input_.get('value', None) for input_ in form.find_all('input')])}
+        form_data = helpers.parse_form(login_page.find(id='aspnetForm'))
 
         form_data['ctl00$MainContent$username'] = username
         form_data['ctl00$MainContent$password'] = password
@@ -79,7 +77,7 @@ class StudentVue:
                 re.match(r'Room: ([a-zA-z0-9]+)', class_.find(class_='teacher-room').text.strip()).group(1),
                 models.Teacher(
                     class_.find('div', class_='teacher').text,
-                    re.search(r'([a-zA-z0-9]+@[a-zA-z]+.[a-zA-z]+)', class_.find('span', class_='teacher').find('a')['href']).group(1) if re.search(r'([a-zA-z0-9]+@[a-zA-z]+.[a-zA-z]+)', class_.find('span', class_='teacher').find('a')['href']) else class_.find('span', class_='teacher').find('a')['href']
+                    helpers.parse_email(class_.find('span', class_='teacher').find('a')['href'])
                 ),
                 float(classes_table.find('tbody').find_all('tr', {'data-mark-gu': True})[idx].find(class_='score').text[:-1]),
                 grading_periods,
@@ -124,7 +122,7 @@ class StudentVue:
         values = [
             td.get_text(separator='\n') if len(td.find_all('span')) == 1 else models.Teacher(
                 td.find_all('span')[1].text.strip(),
-                re.search(r'([a-zA-z0-9]+@[a-zA-z]+.[a-zA-z]+)', td.find_all('span')[1].find('a')['href']).group(1) if re.search(r'([a-zA-z0-9]+@[a-zA-z]+.[a-zA-z]+)', td.find_all('span')[1].find('a')['href']) else td.find_all('span')[1].find('a')['href']
+                helpers.parse_email(td.find_all('span')[1].find('a')['href'])
             )
             for td in tds
         ]
