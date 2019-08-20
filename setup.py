@@ -4,10 +4,10 @@ import os
 setup(
     name='studentvue',
     packages=['studentvue'],
-    version='1.12',
+    version='1.2',
     description='Python Scraper for StudentVue Portals',
     author='Kai Chang',
-    url='https://github.com/kajchang/studentvuescraper',
+    url='https://github.com/kajchang/StudentVue',
     license='MIT',
     long_description_content_type='text/markdown',
     long_description=open(os.path.join(os.path.abspath(
