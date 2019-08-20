@@ -1,9 +1,10 @@
 class Class:
-    def __init__(self, period, name, room, teacher, grading_periods, class_id, school_id, org_id):
+    def __init__(self, period, name, room, teacher, grade, grading_periods, class_id, school_id, org_id):
         self.period = period
         self.room = room
         self.name = name
         self.teacher = teacher
+        self.grade = grade
 
         self.grading_periods = grading_periods
 
@@ -15,9 +16,6 @@ class Class:
         return 'Period {period} {name} Taught by {teacher} in Room {room}'.format(
             **self.__dict__)
 
-    def __str__(self):
-        return self.__repr__()
-
 
 class Teacher:
     def __init__(self, name, email):
@@ -27,9 +25,6 @@ class Teacher:
     def __repr__(self):
         return self.name
 
-    def __str__(self):
-        return self.__repr__()
-
 
 class GradingPeriod:
     def __init__(self, period_guid, name):
@@ -38,6 +33,3 @@ class GradingPeriod:
 
     def __repr__(self):
         return self.name
-
-    def __str__(self):
-        return self.__repr__()

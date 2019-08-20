@@ -81,11 +81,12 @@ class StudentVue:
                     class_.find('div', class_='teacher').text,
                     re.search(r'([a-zA-z0-9]+@[a-zA-z]+.[a-zA-z]+)', class_.find('span', class_='teacher').find('a')['href']).group(1) if re.search(r'([a-zA-z0-9]+@[a-zA-z]+.[a-zA-z]+)', class_.find('span', class_='teacher').find('a')['href']) else class_.find('span', class_='teacher').find('a')['href']
                 ),
+                float(classes_table.find('tbody').find_all('tr', {'data-mark-gu': True})[idx].find(class_='score').text[:-1]),
                 grading_periods,
                 int(class_['data-guid']),
-                int(class_data[0]['schoolID']),
-                class_data[0]['OrgYearGU']
-            ) for class_ in classes_table.find('tbody').find_all('tr', {'data-mark-gu': False})
+                int(next(iter(class_data))['schoolID']),
+                next(iter(class_data))['OrgYearGU']
+            ) for idx, class_ in enumerate(classes_table.find('tbody').find_all('tr', {'data-mark-gu': False}))
         ]
 
     def getStudentInfo(self):
@@ -131,30 +132,3 @@ class StudentVue:
         return {
             k: v for (k, v) in zip(keys, values)
         }
-
-    """
-        def getGrades(self, class_, grading_period):
-        grading_info = self.session.post('https://{}/service/PXP2Communication.asmx/LoadControl'.format(self.districtdomain),
-            data={
-                "request":
-                    {
-                        "control": "Gradebook_ClassDetails",
-                        "parameters": {
-                            "schoolID": class_.school_id,
-                            "classID": class_.class_id,
-                            "gradePeriodGU": grading_period.period_guid,
-                            "subjectID": -1,
-                            "teacherID": -1,
-                            "markPeriodGU": None,
-                            "assignmentID": -1,
-                            "standardIdentifier": None,
-                            "viewName": None,
-                            "studentGU": self.student_guid,
-                            "AGU": "0",
-                            "OrgYearGU": class_.org_id
-                        }
-                    }
-            }
-        )
-
-        return grading_info"""
