@@ -2,8 +2,11 @@ import re
 
 
 def parse_form(form):
-    return {k: v for (k, v) in zip([input_['name'] for input_ in form.find_all(
-            'input')], [input_.get('value', None) for input_ in form.find_all('input')])}
+    keys = [input_['name'] for input_ in form.find_all('input')] + \
+           [select['name'] for select in form.find_all('select')]
+    values = [input_.get('value', None) for input_ in form.find_all('input')] + \
+             [select.find('option', selected='selected').get('value', None) for select in form.find_all('select')]
+    return {k: v for (k, v) in zip(keys, values)}
 
 
 # parses out an email, with tolerance for javascript: links
