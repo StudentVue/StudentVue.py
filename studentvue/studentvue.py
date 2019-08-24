@@ -167,3 +167,6 @@ class StudentVue:
         return {
             k: v for (k, v) in zip(keys, values)
         }
+
+    def get_image(self, fp):
+        fp.write(self.session.get(self.picture_url).content)
