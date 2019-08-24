@@ -4,6 +4,10 @@
 
 This repository provides a easy way to access data from StudentVue portals in Python programs.
 
+Note:
+
+If this library isn't updating properly, try explictly installing the latest version (e.g. `pip3 install studentvue==1.2.1`) to fix this issue in the future.
+
 ## Logging In
 
 `pip install studentvue` or clone / download the repository and `python setup.py install`.
@@ -13,11 +17,11 @@ from studentvue import StudentVue
 sv = StudentVue('username', 'password', 'domain name') 
 ```
 
-## Methods
+## Basic API
 
 ```python
->>> classes = sv.getClasses()
->>> classes
+classes = sv.get_classes()
+"""
 [
     'Period 2 CCSS Algebra 2A Taught by XXX XXX in Room XXX with a Grade of XX.X%',
     'Period 3 Chemistry A H Taught by XXX XXX in Room XXX with a Grade of XX.X%',
@@ -25,29 +29,31 @@ sv = StudentVue('username', 'password', 'domain name')
     'Period 7 AP Euro Hist A Taught by XXX XXX in Room XXX with a Grade of XX.X%',
     'Period 8 PE 2A Taught by XXX XXX in Room XXX with a Grade of XX.X%'
 ]
+"""
 
 # classes and teachers are both objects
 
->>> classes[0].room
-XXX
+print(classes[0].room) # XXX
 
->>> classes[0].teacher.email
-XXX@XXX.XXX
+print(classes[0].teacher.email) # XXX@XXX.XXX
 ```
 
 ```python
->>> sv.getStudentInfo()
+sv.get_student_info()
+"""
 {
     'Student Name': 'XXXXX',
     'Student No': 'XXXXXX',
     'Gender': 'Male',
     'Grade': '10'
 }
+"""
 ```
 
 ```python
->>> sv.getSchoolInfo()
+sv.get_school_info()
 # Principal, if supplied, will also be converted to a Teacher object
+"""
 {
     'Principal': Andrew Ishibashi,
     'School Name': 'Lowell HS',
@@ -56,6 +62,12 @@ XXX@XXX.XXX
     'Fax': '415-759-2742',
     'Website URL': 'https://lhs-sfusd-ca.schoolloop.com/'
 }
+"""
+```
+
+```python
+with open('school_picture.png', 'wb') as school_picture_file:
+  sv.get_image(school_picture_file)
 ```
 
 ## Bugs and Contributing
