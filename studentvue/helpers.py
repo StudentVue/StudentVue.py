@@ -1,4 +1,10 @@
 import re
+import json
+
+
+def parse_data_grid(script):
+    match = re.search(r'new DevExpress.PXPRemoteDataStore\(\'([A-Z0-9-]+)\', \'({.+})\'\)', script)
+    return match.group(1), json.loads(match.group(2))
 
 
 def parse_form(form):

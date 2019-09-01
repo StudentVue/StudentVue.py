@@ -54,43 +54,37 @@ class StudentVue:
         self.student_guid = re.match(r'Photos/[A-Z0-9]+/([A-Z0-9-]+)_Photo\.PNG',
                                      home_page.find(alt='Student Photo')['src']).group(1)
 
-    def get_classes(self):
-        class_page = BeautifulSoup(self.session.get(
-            'https://{}/PXP2_Gradebook.aspx?AGU=0'.format(self.district_domain)).text, 'html.parser')
+    def get_schedule(self):
+        schedule_page = BeautifulSoup(self.session.get(
+            'https://{}/PXP2_ClassSchedule.aspx?AGU=0'.format(self.district_domain)).text, 'html.parser')
 
-        return self._parse_class_page(class_page)
+        return self._parse_schedule_page(schedule_page)
 
-    @staticmethod
-    def _parse_class_page(class_page):
-        classes_table = class_page.find('table')
+    def _parse_schedule_page(self, schedule_page):
+        script = schedule_page.find_all('script', {'type': 'text/javascript'})[-1]
+        name, params = helpers.parse_data_grid(script.text)
 
-        class_data = json.loads(
-            re.search(r'PXP\.GBFocusData = ({.+});', class_page.find_all('script')[1].text).group(1)
-        )['GradingPeriods']
-
-        grading_periods = [
-            models.GradingPeriod(
-                grading_period['GU'],
-                grading_period['Name']
-            ) for grading_period in class_data
-        ]
+        data = json.loads(self._get_data_grid(name, params, {
+            'group': None,
+            'requireTotalCount': True,
+            'searchOperation': 'contains',
+            'searchValue': None,
+            'skip': 0,
+            'sort': None,
+            'take': 15
+        }).text)['d']['Data']['data']
 
         return [
             models.Class(
-                int(class_.find('button').text[0]),
-                class_.find('button').text[3:],
-                re.match(r'Room: ([a-zA-z0-9]+)', class_.find(class_='teacher-room').text.strip()).group(1),
-                models.Teacher(
-                    class_.find('div', class_='teacher').text,
-                    helpers.parse_email(class_.find('span', class_='teacher').find('a')['href'])
+                period=class_['Period'],
+                name=class_['CourseTitle'],
+                room=int(class_['RoomName']) if class_['RoomName'].isdigit() else class_['RoomName'],
+                teacher=models.Teacher(
+                    name=json.loads(class_['Teacher'])['teacherName'],
+                    email=json.loads(class_['Teacher'])['email']
                 ),
-                float(classes_table.find('tbody').find_all('tr', {'data-mark-gu': True})[idx].find(class_='score').text[
-                      :-1]),
-                grading_periods,
-                int(class_['data-guid']),
-                int(next(iter(class_data))['schoolID']),
-                next(iter(class_data))['OrgYearGU']
-            ) for idx, class_ in enumerate(classes_table.find('tbody').find_all('tr', {'data-mark-gu': False}))
+                class_id=class_['ID']
+            ) for class_ in data
         ]
 
     def get_assignments(self, month=datetime.now().month, year=datetime.now().year):
@@ -109,10 +103,10 @@ class StudentVue:
     def _parse_calendar_page(calendar_page):
         return [
             models.Assignment(
-                re.sub(r'- Score:.+', '', assignment.text[assignment.text.index(':') + 1:]).strip(),
-                assignment.text[:assignment.text.index(':')].strip(),
-                int(parse_qs(assignment['href'])['DGU'][0]),
-                parse_qs(assignment['href'])['GP'][0]
+                name=re.sub(r'- Score:.+', '', assignment.text[assignment.text.index(':') + 1:]).strip(),
+                class_name=assignment.text[:assignment.text.index(':')].strip(),
+                assignment_id=int(parse_qs(assignment['href'])['DGU'][0]),
+                grading_period=parse_qs(assignment['href'])['GP'][0]
             ) for assignment in calendar_page.find_all('a', {'data-control': 'Gradebook_AssignmentDetails'})
         ]
 
@@ -158,8 +152,8 @@ class StudentVue:
 
         values = [
             td.get_text(separator='\n') if len(td.find_all('span')) == 1 else models.Teacher(
-                td.find_all('span')[1].text.strip(),
-                helpers.parse_email(td.find_all('span')[1].find('a')['href'])
+                name=td.find_all('span')[1].text.strip(),
+                email=helpers.parse_email(td.find_all('span')[1].find('a')['href'])
             )
             for td in tds
         ]
@@ -170,3 +164,16 @@ class StudentVue:
 
     def get_image(self, fp):
         fp.write(self.session.get(self.picture_url).content)
+
+    def _get_data_grid(self, name, params, load_options):
+        return self.session.post('https://{}/service/PXP2Communication.asmx/DXDataGridRequest'.format(self.district_domain),
+            json={
+                'request': {
+                    'agu': 0,
+                    'dataRequestType': 'Load',
+                    'dataSourceTypeName': name,
+                    'gridParameters': json.dumps(params),
+                    'loadOptions': load_options
+                }
+            }
+        )
