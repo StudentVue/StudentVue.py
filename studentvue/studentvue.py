@@ -175,6 +175,9 @@ class StudentVue:
                                       text='{period}: {name}'.format(**class_.__dict__),
                                       class_='course-title')
 
+        if button is None:
+            return None
+
         focus_data = json.loads(button['data-focus'])
 
         grade_book_class_page = BeautifulSoup(json.loads(self._get_load_control(
