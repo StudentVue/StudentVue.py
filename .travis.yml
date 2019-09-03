@@ -10,3 +10,13 @@ install:
 
 script:
   - python -c 'import studentvue'
+  - cd docs
+  - make html
+
+deploy:
+  provider: pages
+  skip-cleanup: true
+  github-token: $GITHUB_TOKEN
+  local_dir: docs/build/html
+  on:
+    branch: master

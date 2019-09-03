@@ -12,12 +12,15 @@ import studentvue.helpers as helpers
 
 
 class StudentVue:
+    """The StudentVue scraper object."""
     def __init__(self, username, password, district_domain):
-        """The StudentVue scraper object.
-        Args:
-            username (str): The username of the student portal account
-            password (str): The password of the student portal account
-            district_domain (str): The domain name of your student portal
+        """
+        :param username: your StudentVue account's username
+        :type username: str
+        :param password: your StudentVue account's password
+        :type password: str
+        :param district_domain: your school district's StudentVue domain
+        :type district_domain: str
         """
         self.district_domain = urlparse(district_domain).netloc + urlparse(district_domain).path
         if self.district_domain[len(self.district_domain) - 1] == '/':
@@ -56,6 +59,10 @@ class StudentVue:
                                      home_page.find(alt='Student Photo')['src']).group(1)
 
     def get_schedule(self):
+        """
+        :return: a list of the classes you're taking
+        :rtype: list of studentvue.models.Class
+        """
         schedule_page = BeautifulSoup(self.session.get(
             'https://{}/PXP2_ClassSchedule.aspx?AGU=0'.format(self.district_domain)).text, 'html.parser')
 
@@ -90,6 +97,14 @@ class StudentVue:
         ]
 
     def get_assignments(self, month=datetime.now().month, year=datetime.now().year):
+        """
+        :param month: the month to get assignments from, defaults to the current month
+        :type month: int
+        :param year: the year to get assignments from, defaults to the current year
+        :type year: int
+        :return: a list of the assignments due in the specified month
+        :rtype: list of studentvue.model.Assignment
+        """
         calendar_page = BeautifulSoup(self.session.get(
             'https://{}/PXP2_Calendar.aspx?AGU=0'.format(self.district_domain)).text, 'html.parser')
 
@@ -116,6 +131,10 @@ class StudentVue:
         ]
 
     def get_student_info(self):
+        """
+        :return: miscellaneous student information
+        :rtype: dict of (str, str)
+        """
         student_info_page = BeautifulSoup(self.session.get(
             'https://{}/PXP2_MyAccount.aspx?AGU=0'.format(self.district_domain)).text, 'html.parser')
 
@@ -139,6 +158,10 @@ class StudentVue:
         }
 
     def get_school_info(self):
+        """
+        :return: miscellaneous school information
+        :rtype: dict of (str, str)
+        """
         school_info_page = BeautifulSoup(self.session.get(
             'https://{}/PXP2_SchoolInformation.aspx?AGU=0'.format(self.district_domain)).text, 'html.parser')
 
@@ -168,6 +191,12 @@ class StudentVue:
         }
 
     def get_class_info(self, class_):
+        """
+        :param class_: the class to get info for
+        :type class_: studentvue.models.Class
+        :return: your current grades and assignments in the specified class
+        :rtype: dict containing `grade`, `mark`, and `assignments` keys
+        """
         grade_book_page = BeautifulSoup(self.session.get(
             'https://{}/PXP2_Gradebook.aspx?AGU=0'.format(self.district_domain)).text, 'html.parser')
 
@@ -219,11 +248,14 @@ class StudentVue:
         }
 
     def get_image(self, fp):
+        """
+        :param fp: file-like object to write to
+        :type fp: PyFileObject
+        """
         fp.write(self.session.get(self.picture_url).content)
 
     def _get_data_grid(self, name, params, load_options):
-        return self.session.post(
-            'https://{}/service/PXP2Communication.asmx/DXDataGridRequest'.format(self.district_domain),
+        return self.session.post('https://{}/service/PXP2Communication.asmx/DXDataGridRequest'.format(self.district_domain),
             json={
                 'request': {
                     'agu': 0,
@@ -233,14 +265,14 @@ class StudentVue:
                     'loadOptions': load_options
                 }
             }
-            )
+        )
 
     def _get_load_control(self, control, params):
         return self.session.post('https://{}/service/PXP2Communication.asmx/LoadControl'.format(self.district_domain),
-                                 json={
-                                     'request': {
-                                         'control': control,
-                                         'parameters': params
-                                     }
-                                 }
-                                 )
+            json={
+                'request': {
+                    'control': control,
+                    'parameters': params
+                }
+            }
+        )
