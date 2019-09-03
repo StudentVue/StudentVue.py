@@ -11,6 +11,7 @@ script:
   - python -c 'import studentvue'
   - cd docs
   - make html
+  - touch build/html/.nojekyll
 
 deploy:
   provider: pages
