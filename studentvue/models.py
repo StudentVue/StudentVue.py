@@ -22,20 +22,20 @@ class Teacher:
 
 
 class Assignment:
-    def __init__(self, name, class_name, assignment_id, grading_period):
+    def __init__(self, name, class_name, date, assignment_id, grading_period, org_year_id):
         self.name = name
         self.class_name = class_name
+        self.date = date
         self.assignment_id = assignment_id
         self.grading_period = grading_period
+        self.org_year_id = org_year_id
 
     def __repr__(self):
         return self.name
 
 
-class GradingPeriod:
-    def __init__(self, period_id, name):
-        self.period_id = period_id
-        self.name = name
-
-    def __repr__(self):
-        return self.name
+class GradedAssignment(Assignment):
+    def __init__(self, name, class_name, date, assignment_id, grading_period, org_year_id, score, max_score):
+        super().__init__(name, class_name, date, assignment_id, grading_period, org_year_id)
+        self.score = score
+        self.max_score = max_score

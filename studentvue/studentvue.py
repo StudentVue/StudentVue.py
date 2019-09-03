@@ -26,7 +26,8 @@ class StudentVue:
         self.session = requests.Session()
 
         login_page = BeautifulSoup(self.session.get(
-            'https://{}/PXP2_Login_Student.aspx?regenerateSessionId=True'.format(self.district_domain)).text, 'html.parser')
+            'https://{}/PXP2_Login_Student.aspx?regenerateSessionId=True'.format(self.district_domain)).text,
+                                   'html.parser')
 
         form_data = helpers.parse_form(login_page.find(id='aspnetForm'))
 
@@ -58,13 +59,10 @@ class StudentVue:
         schedule_page = BeautifulSoup(self.session.get(
             'https://{}/PXP2_ClassSchedule.aspx?AGU=0'.format(self.district_domain)).text, 'html.parser')
 
-        return self._parse_schedule_page(schedule_page)
-
-    def _parse_schedule_page(self, schedule_page):
         script = schedule_page.find_all('script', {'type': 'text/javascript'})[-1]
         name, params = helpers.parse_data_grid(script.text)
 
-        data = json.loads(self._get_data_grid(name, params, {
+        schedule_data = json.loads(self._get_data_grid(name, params, {
             'group': None,
             'requireTotalCount': True,
             'searchOperation': 'contains',
@@ -74,6 +72,10 @@ class StudentVue:
             'take': 15
         }).text)['d']['Data']['data']
 
+        return self._parse_schedule_data(schedule_data)
+
+    @staticmethod
+    def _parse_schedule_data(schedule_data):
         return [
             models.Class(
                 period=class_['Period'],
@@ -84,7 +86,7 @@ class StudentVue:
                     email=json.loads(class_['Teacher'])['email']
                 ),
                 class_id=class_['ID']
-            ) for class_ in data
+            ) for class_ in schedule_data
         ]
 
     def get_assignments(self, month=datetime.now().month, year=datetime.now().year):
@@ -105,8 +107,11 @@ class StudentVue:
             models.Assignment(
                 name=re.sub(r'- Score:.+', '', assignment.text[assignment.text.index(':') + 1:]).strip(),
                 class_name=assignment.text[:assignment.text.index(':')].strip(),
+                date=datetime.strptime(assignment.parent.parent.find('span', class_='datePick')['onclick'],
+                                       'ChangeView(\'2\', \'%m/%d/%Y\')'),
                 assignment_id=int(parse_qs(assignment['href'])['DGU'][0]),
-                grading_period=parse_qs(assignment['href'])['GP'][0]
+                grading_period=parse_qs(assignment['href'])['GP'][0],
+                org_year_id=parse_qs(assignment['href'])['SSY'][0]
             ) for assignment in calendar_page.find_all('a', {'data-control': 'Gradebook_AssignmentDetails'})
         ]
 
@@ -162,11 +167,60 @@ class StudentVue:
             k: v for (k, v) in zip(keys, values)
         }
 
+    def get_class_info(self, class_):
+        grade_book_page = BeautifulSoup(self.session.get(
+            'https://{}/PXP2_Gradebook.aspx?AGU=0'.format(self.district_domain)).text, 'html.parser')
+
+        button = grade_book_page.find('button',
+                                      text='{period}: {name}'.format(**class_.__dict__),
+                                      class_='course-title')
+
+        focus_data = json.loads(button['data-focus'])
+
+        grade_book_class_page = BeautifulSoup(json.loads(self._get_load_control(
+            focus_data['LoadParams']['ControlName'],
+            focus_data['FocusArgs']
+        ).text)['d']['Data']['html'], 'html.parser')
+
+        return self._parse_grade_book_class_page(grade_book_class_page, class_.name)
+
+    @staticmethod
+    def _parse_grade_book_class_page(grade_book_page, class_name):
+        return {
+            'mark': grade_book_page.find('div', class_='mark').text,
+            'score': float(grade_book_page.find('div', class_='score').text[:-1]),
+            'assignments': [
+                models.GradedAssignment(
+                    name=json.loads(assignment['GBAssignment'])['value'],
+                    class_name=class_name,
+                    date=datetime.strptime(assignment['Date'], '%m/%d/%Y'),
+                    assignment_id=int(assignment['gradeBookId']),
+                    grading_period=json.loads(
+                        re.search(r'data-focus=({.+})', json.loads(
+                            assignment['GBAssignment'])['hrefAttributes']).group(1))['FocusArgs']['gradePeriodGU'],
+                    org_year_id=json.loads(
+                        re.search(r'data-focus=({.+})', json.loads(
+                            assignment['GBAssignment'])['hrefAttributes']).group(1))['FocusArgs']['OrgYearGU'],
+                    score=None if 'Points Possible' in assignment['GBPoints']
+                    else float(assignment['GBPoints'].split('/')[0]),
+                    max_score=float(assignment['GBPoints'].replace(' Points Possible', '')) if 'Points Possible' in assignment['GBPoints']
+                    else float(assignment['GBPoints'].split('/')[1])
+                ) for assignment in json.loads(
+                    re.sub(r'PXP\.(?:(?:DataGridTemplates)|(?:DevExpress))\.([A-Za-z]+)',
+                           lambda match: '"{}"'.format(match.group(1)), re.search(
+                            r'PXP\.DevExpress\.ExtendGridConfiguration\(\W+({.+})\W+\)',
+                            grade_book_page.find_all('script', {'type': 'text/javascript'})[-1].text).group(1)
+                           )
+                )['dataSource']
+            ]
+        }
+
     def get_image(self, fp):
         fp.write(self.session.get(self.picture_url).content)
 
     def _get_data_grid(self, name, params, load_options):
-        return self.session.post('https://{}/service/PXP2Communication.asmx/DXDataGridRequest'.format(self.district_domain),
+        return self.session.post(
+            'https://{}/service/PXP2Communication.asmx/DXDataGridRequest'.format(self.district_domain),
             json={
                 'request': {
                     'agu': 0,
@@ -176,4 +230,14 @@ class StudentVue:
                     'loadOptions': load_options
                 }
             }
-        )
+            )
+
+    def _get_load_control(self, control, params):
+        return self.session.post('https://{}/service/PXP2Communication.asmx/LoadControl'.format(self.district_domain),
+                                 json={
+                                     'request': {
+                                         'control': control,
+                                         'parameters': params
+                                     }
+                                 }
+                                 )
