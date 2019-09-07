@@ -52,22 +52,33 @@ class StudentVue:
         self.school_name = home_page.find(class_='school').text
         self.school_phone = home_page.find(class_='phone').text
 
-        self.picture_url = 'https://{}/{}'.format(self.district_domain,
-                                                  home_page.find(alt='Student Photo')['src'])
+        picture_src = home_page.find(alt='Student Photo')['src']
 
-        self.student_guid = re.match(r'Photos/[A-Z0-9]+/([A-Z0-9-]+)_Photo\.PNG',
-                                     home_page.find(alt='Student Photo')['src']).group(1)
+        self.picture_url = 'https://{}/{}'.format(self.district_domain, picture_src)
 
-    def get_schedule(self):
+        self.student_guid = re.match(r'Photos/[A-Z0-9]+/([A-Z0-9-]+)_Photo\.PNG', picture_src).group(1) \
+            if picture_src != 'Images/PXP/NoPhoto.png' else None
+
+    def get_schedule(self, semester=None):
         """
+        :param semester: (optional) if provided, it will get the schedule for that semester instead of the default one
+        :type semester: int
         :return: a list of the classes you're taking
         :rtype: list of studentvue.models.Class
         """
+        if semester is not None:
+            extra = '&VDT=' + str(semester)
+        else:
+            extra = ''
+
         schedule_page = BeautifulSoup(self.session.get(
-            'https://{}/PXP2_ClassSchedule.aspx?AGU=0'.format(self.district_domain)).text, 'html.parser')
+            'https://{}/PXP2_ClassSchedule.aspx?AGU=0'.format(self.district_domain) + extra).text, 'html.parser')
 
         script = schedule_page.find_all('script', {'type': 'text/javascript'})[-1]
-        name, params = helpers.parse_data_grid(script.text)
+        try:
+            name, params = helpers.parse_data_grid(script.text)
+        except AttributeError:
+            return []
 
         schedule_data = json.loads(self._get_data_grid(name, params, {
             'group': None,
