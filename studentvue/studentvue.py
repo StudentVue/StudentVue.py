@@ -52,22 +52,33 @@ class StudentVue:
         self.school_name = home_page.find(class_='school').text
         self.school_phone = home_page.find(class_='phone').text
 
-        self.picture_url = 'https://{}/{}'.format(self.district_domain,
-                                                  home_page.find(alt='Student Photo')['src'])
+        picture_src = home_page.find(alt='Student Photo')['src']
 
-        self.student_guid = re.match(r'Photos/[A-Z0-9]+/([A-Z0-9-]+)_Photo\.PNG',
-                                     home_page.find(alt='Student Photo')['src']).group(1)
+        self.picture_url = 'https://{}/{}'.format(self.district_domain, picture_src)
 
-    def get_schedule(self):
+        self.student_guid = re.match(r'Photos/[A-Z0-9]+/([A-Z0-9-]+)_Photo\.PNG', picture_src).group(1) \
+            if picture_src != 'Images/PXP/NoPhoto.png' else None
+
+    def get_schedule(self, semester=None):
         """
+        :param semester: (optional) if provided, it will get the schedule for that semester instead of the default one
+        :type semester: int
         :return: a list of the classes you're taking
         :rtype: list of studentvue.models.Class
         """
+        if semester is not None:
+            extra = '&VDT=' + str(semester)
+        else:
+            extra = ''
+
         schedule_page = BeautifulSoup(self.session.get(
-            'https://{}/PXP2_ClassSchedule.aspx?AGU=0'.format(self.district_domain)).text, 'html.parser')
+            'https://{}/PXP2_ClassSchedule.aspx?AGU=0'.format(self.district_domain) + extra).text, 'html.parser')
 
         script = schedule_page.find_all('script', {'type': 'text/javascript'})[-1]
-        name, params = helpers.parse_data_grid(script.text)
+        try:
+            name, params = helpers.parse_data_grid(script.text)
+        except AttributeError:
+            return []
 
         schedule_data = json.loads(self._get_data_grid(name, params, {
             'group': None,
@@ -83,18 +94,23 @@ class StudentVue:
 
     @staticmethod
     def _parse_schedule_data(schedule_data):
-        return [
-            models.Class(
+        classes = []
+
+        for class_ in schedule_data:
+            teacher = json.loads(class_['Teacher'])
+
+            classes.append(models.Class(
                 period=class_['Period'],
                 name=class_['CourseTitle'],
                 room=int(class_['RoomName']) if class_['RoomName'].isdigit() else class_['RoomName'],
                 teacher=models.Teacher(
-                    name=json.loads(class_['Teacher'])['teacherName'],
-                    email=json.loads(class_['Teacher'])['email']
+                    name=teacher['teacherName'],
+                    email=teacher['email']
                 ),
                 class_id=class_['ID']
-            ) for class_ in schedule_data
-        ]
+            ))
+
+        return classes
 
     def get_assignments(self, month=datetime.now().month, year=datetime.now().year):
         """
@@ -118,17 +134,22 @@ class StudentVue:
 
     @staticmethod
     def _parse_calendar_page(calendar_page):
-        return [
-            models.Assignment(
+        assignments = []
+
+        for assignment in calendar_page.find_all('a', {'data-control': 'Gradebook_AssignmentDetails'}):
+            qs = parse_qs(assignment['href'])
+
+            assignments.append(models.Assignment(
                 name=re.sub(r'- Score:.+', '', assignment.text[assignment.text.index(':') + 1:]).strip(),
                 class_name=assignment.text[:assignment.text.index(':')].strip(),
                 date=datetime.strptime(assignment.parent.parent.find('span', class_='datePick')['onclick'],
                                        'ChangeView(\'2\', \'%m/%d/%Y\')'),
-                assignment_id=int(parse_qs(assignment['href'])['DGU'][0]),
-                grading_period=parse_qs(assignment['href'])['GP'][0],
-                org_year_id=parse_qs(assignment['href'])['SSY'][0]
-            ) for assignment in calendar_page.find_all('a', {'data-control': 'Gradebook_AssignmentDetails'})
-        ]
+                assignment_id=int(qs['DGU'][0]),
+                grading_period=qs['GP'][0],
+                org_year_id=qs['SSY'][0]
+            ))
+
+        return assignments
 
     def get_student_info(self):
         """
@@ -218,33 +239,38 @@ class StudentVue:
 
     @staticmethod
     def _parse_grade_book_class_page(grade_book_page, class_name):
+        assignments = []
+
+        for assignment in json.loads(
+                re.sub(r'PXP\.(?:(?:DataGridTemplates)|(?:DevExpress))\.([A-Za-z]+)',
+                       lambda match: '"{}"'.format(match.group(1)), re.search(
+                        r'PXP\.DevExpress\.ExtendGridConfiguration\(\W+({.+})\W+\)',
+                        grade_book_page.find_all('script', {'type': 'text/javascript'})[-1].text).group(1)
+                       )
+        )['dataSource']:
+            focus_args = json.loads(
+                    re.search(r'data-focus=({.+})', json.loads(
+                        assignment['GBAssignment'])['hrefAttributes']).group(1)
+            )['FocusArgs']
+
+            assignments.append(models.GradedAssignment(
+                name=json.loads(assignment['GBAssignment'])['value'],
+                class_name=class_name,
+                date=datetime.strptime(assignment['Date'], '%m/%d/%Y'),
+                assignment_id=int(assignment['gradeBookId']),
+                grading_period=focus_args['gradePeriodGU'],
+                org_year_id=focus_args['OrgYearGU'],
+                score=None if 'Points Possible' in assignment['GBPoints']
+                else float(assignment['GBPoints'].split('/')[0]),
+                max_score=float(assignment['GBPoints'].replace(' Points Possible', ''))
+                if 'Points Possible' in assignment['GBPoints']
+                else float(assignment['GBPoints'].split('/')[1])
+            ))
+
         return {
             'mark': grade_book_page.find('div', class_='mark').text,
             'score': float(grade_book_page.find('div', class_='score').text[:-1]),
-            'assignments': [
-                models.GradedAssignment(
-                    name=json.loads(assignment['GBAssignment'])['value'],
-                    class_name=class_name,
-                    date=datetime.strptime(assignment['Date'], '%m/%d/%Y'),
-                    assignment_id=int(assignment['gradeBookId']),
-                    grading_period=json.loads(
-                        re.search(r'data-focus=({.+})', json.loads(
-                            assignment['GBAssignment'])['hrefAttributes']).group(1))['FocusArgs']['gradePeriodGU'],
-                    org_year_id=json.loads(
-                        re.search(r'data-focus=({.+})', json.loads(
-                            assignment['GBAssignment'])['hrefAttributes']).group(1))['FocusArgs']['OrgYearGU'],
-                    score=None if 'Points Possible' in assignment['GBPoints']
-                    else float(assignment['GBPoints'].split('/')[0]),
-                    max_score=float(assignment['GBPoints'].replace(' Points Possible', '')) if 'Points Possible' in assignment['GBPoints']
-                    else float(assignment['GBPoints'].split('/')[1])
-                ) for assignment in json.loads(
-                    re.sub(r'PXP\.(?:(?:DataGridTemplates)|(?:DevExpress))\.([A-Za-z]+)',
-                           lambda match: '"{}"'.format(match.group(1)), re.search(
-                            r'PXP\.DevExpress\.ExtendGridConfiguration\(\W+({.+})\W+\)',
-                            grade_book_page.find_all('script', {'type': 'text/javascript'})[-1].text).group(1)
-                           )
-                )['dataSource']
-            ]
+            'assignments': assignments
         }
 
     def get_image(self, fp):
