@@ -39,3 +39,14 @@ class GradedAssignment(Assignment):
         super().__init__(name, class_name, date, assignment_id, grading_period, org_year_id)
         self.score = score
         self.max_score = max_score
+
+class Course:
+    def __init__(self, name, grade, creditsAttempted, creditsCompleted, isAP):
+        self.name = name
+        self.grade = grade
+        self.creditsAttempted = creditsAttempted
+        self.creditsCompleted = creditsCompleted
+        self.isAP = isAP
+
+    def __repr__(self):
+        return self.name

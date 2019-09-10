@@ -237,6 +237,18 @@ class StudentVue:
 
         return self._parse_grade_book_class_page(grade_book_class_page, class_.name)
 
+    def get_course_history(self):
+        """
+        :return: Your full course history, including semester grades and number of credits earned per class.
+        :rtype: dict of a key of type studentvue.models.Course for each grade
+        """
+        course_history_page = BeautifulSoup(self.session.get(
+            'https://{}/PXP2_CourseHistory.aspx?AGU=0'.format(self.district_domain)).text, 'html.parser')
+        yearly_course_data = course_history_page.find('table', class_='chs-course-history').div
+        print(yearly_course_data)
+        # TODO: parse data from table to proper return type
+        # TODO: test this function
+
     @staticmethod
     def _parse_grade_book_class_page(grade_book_page, class_name):
         assignments = []
