@@ -244,25 +244,7 @@ class StudentVue:
         """
         course_history_page = BeautifulSoup(self.session.get(
             'https://{}/PXP2_CourseHistory.aspx?AGU=0'.format(self.district_domain)).text, 'html.parser')
-        course_data = course_history_page.find('div', class_='chs-course-history').div
-        yearly_tables = course_data.find_all('table')
-        yearly_labels = course_data.find_all('h2')
-        course_history = {}
-        for i in range(len(yearly_tables)):
-            current_table = yearly_tables[i]
-            semesters = current_table.find_all('tbody')
-            semesters_courses = []
-            sem_index = 1
-            for semester in semesters:
-                courses = semester.find_all('tr')
-                del courses[0]
-                current_courses = []
-                for x in courses:
-                    course = list(filter(lambda index: (index != '\n'), x.strings))
-                    current_courses.append(models.Course(course[0],course[1],course[2],course[3],course[0].find("AP ") != -1))
-            semesters_courses.append(current_courses)
-            course_history[yearly_labels[i].contents[2].strip()] = semesters_courses
-        return course_history
+        return self._parse_course_history_page(course_history_page)
 
     @staticmethod
     def _parse_grade_book_class_page(grade_book_page, class_name):
@@ -299,6 +281,27 @@ class StudentVue:
             'score': float(grade_book_page.find('div', class_='score').text[:-1]),
             'assignments': assignments
         }
+    @staticmethod
+    def _parse_course_history_page(page):
+        course_data = page.find('div', class_='chs-course-history').div
+        yearly_tables = course_data.find_all('table')
+        yearly_labels = course_data.find_all('h2')
+        course_history = {}
+        for i in range(len(yearly_tables)):
+            current_table = yearly_tables[i]
+            semesters = current_table.find_all('tbody')
+            semesters_courses = []
+            sem_index = 1
+            for semester in semesters:
+                courses = semester.find_all('tr')
+                del courses[0]
+                current_courses = []
+                for x in courses:
+                    course = list(filter(lambda index: (index != '\n'), x.strings))
+                    current_courses.append(models.Course(course[0],course[1],course[2],course[3],course[0].find("AP ") != -1))
+            semesters_courses.append(current_courses)
+            course_history[yearly_labels[i].contents[2].strip()] = semesters_courses
+        return course_history
 
     def get_image(self, fp):
         """
