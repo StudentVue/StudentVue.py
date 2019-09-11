@@ -49,4 +49,4 @@ class Course:
         self.isAP = isAP
 
     def __repr__(self):
-        return self.name
+        return self.name+" with grade of "+self.grade

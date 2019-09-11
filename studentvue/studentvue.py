@@ -244,10 +244,20 @@ class StudentVue:
         """
         course_history_page = BeautifulSoup(self.session.get(
             'https://{}/PXP2_CourseHistory.aspx?AGU=0'.format(self.district_domain)).text, 'html.parser')
-        yearly_course_data = course_history_page.find('table', class_='chs-course-history').div
-        print(yearly_course_data)
-        # TODO: parse data from table to proper return type
-        # TODO: test this function
+        course_data = course_history_page.find('div', class_='chs-course-history').div
+        yearly_tables = course_data.find_all('table')
+        yearly_labels = course_data.find_all('h2')
+        course_history = {}
+        for i in range(len(yearly_tables)):
+            current_table = yearly_tables[i]
+            current_courses = []
+            rows = current_table.tbody.find_all('tr')
+            del rows[0]
+            for x in rows:
+                course = list(filter(lambda index: (index != '\n'), x.strings))
+                current_courses.append(models.Course(course[0],course[1],course[2],course[3],course[0].find("AP ") != -1))
+            course_history[yearly_labels[i].contents[2].strip()] = current_courses
+        return course_history
 
     @staticmethod
     def _parse_grade_book_class_page(grade_book_page, class_name):
