@@ -240,7 +240,7 @@ class StudentVue:
     def get_course_history(self):
         """
         :return: Your full course history, including semester grades and number of credits earned per class.
-        :rtype: dict of a key of type studentvue.models.Course for each grade
+        :rtype: dict of grade year paired with a list of semesters, each semester being a list of type studentvue.models.Course
         """
         course_history_page = BeautifulSoup(self.session.get(
             'https://{}/PXP2_CourseHistory.aspx?AGU=0'.format(self.district_domain)).text, 'html.parser')
@@ -250,13 +250,18 @@ class StudentVue:
         course_history = {}
         for i in range(len(yearly_tables)):
             current_table = yearly_tables[i]
-            current_courses = []
-            rows = current_table.tbody.find_all('tr')
-            del rows[0]
-            for x in rows:
-                course = list(filter(lambda index: (index != '\n'), x.strings))
-                current_courses.append(models.Course(course[0],course[1],course[2],course[3],course[0].find("AP ") != -1))
-            course_history[yearly_labels[i].contents[2].strip()] = current_courses
+            semesters = current_table.find_all('tbody')
+            semesters_courses = []
+            sem_index = 1
+            for semester in semesters:
+                courses = semester.find_all('tr')
+                del courses[0]
+                current_courses = []
+                for x in courses:
+                    course = list(filter(lambda index: (index != '\n'), x.strings))
+                    current_courses.append(models.Course(course[0],course[1],course[2],course[3],course[0].find("AP ") != -1))
+            semesters_courses.append(current_courses)
+            course_history[yearly_labels[i].contents[2].strip()] = semesters_courses
         return course_history
 
     @staticmethod

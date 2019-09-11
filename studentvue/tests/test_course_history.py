@@ -12,5 +12,6 @@ class TestCourseHistory(TestCase):
             return
         sv = StudentVue(os.environ.get('TEST_USERNAME'), os.environ.get('TEST_PASSWORD'), 'portal.sfusd.edu')
         ch = sv.get_course_history()
+        print(ch)
         key = iter(ch).__next__()
-        self.assertIsInstance(ch[key][0], models.Course)
+        self.assertIsInstance(ch[key][0][0], models.Course)
