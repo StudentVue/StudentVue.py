@@ -299,7 +299,7 @@ class StudentVue:
                 for x in courses:
                     course = list(filter(lambda index: (index != '\n'), x.strings))
                     current_courses.append(models.Course(course[0],course[1],course[2],course[3],course[0].find("AP ") != -1))
-            semesters_courses.append(current_courses)
+                semesters_courses.append(current_courses)
             course_history[yearly_labels[i].contents[2].strip()] = semesters_courses
         return course_history
 
