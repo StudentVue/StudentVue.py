@@ -281,6 +281,7 @@ class StudentVue:
             'score': float(grade_book_page.find('div', class_='score').text[:-1]),
             'assignments': assignments
         }
+
     @staticmethod
     def _parse_course_history_page(page):
         course_data = page.find('div', class_='chs-course-history').div
@@ -291,14 +292,18 @@ class StudentVue:
             current_table = yearly_tables[i]
             semesters = current_table.find_all('tbody')
             semesters_courses = []
-            sem_index = 1
             for semester in semesters:
                 courses = semester.find_all('tr')
                 del courses[0]
                 current_courses = []
                 for x in courses:
                     course = list(filter(lambda index: (index != '\n'), x.strings))
-                    current_courses.append(models.Course(course[0],course[1],course[2],course[3],course[0].find("AP ") != -1))
+                    current_courses.append(models.Course(
+                        name=course[0],
+                        mark=course[1],
+                        credits_attempted=float(course[2]),
+                        credits_completed=float(course[3]),
+                    ))
                 semesters_courses.append(current_courses)
             course_history[yearly_labels[i].contents[2].strip()] = semesters_courses
         return course_history

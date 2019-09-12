@@ -40,13 +40,17 @@ class GradedAssignment(Assignment):
         self.score = score
         self.max_score = max_score
 
+
 class Course:
-    def __init__(self, name, grade, creditsAttempted, creditsCompleted, isAP):
+    def __init__(self, name, mark, credits_attempted, credits_completed):
         self.name = name
-        self.grade = grade
-        self.credits_attempted = creditsAttempted
-        self.credits_completed = creditsCompleted
-        self.is_ap = isAP
+        self.mark = mark
+        self.credits_attempted = credits_attempted
+        self.credits_completed = credits_completed
+
+    @property
+    def is_ap(self):
+        return 'AP' in self.name
 
     def __repr__(self):
-        return self.name+" with grade of "+self.grade
+        return self.name
