@@ -4,7 +4,7 @@ import os
 setup(
     name='studentvue',
     packages=['studentvue'],
-    version='1.2.3.1',
+    version='1.2.4',
     description='Python Scraper for StudentVue Portals',
     author='Kai Chang',
     url='https://github.com/kajchang/StudentVue',
