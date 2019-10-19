@@ -337,3 +337,17 @@ class StudentVue:
                 }
             }
         )
+    
+    def get_grade_book(self): # gives your grades without the need to parse all your classes
+      """
+      :return: A dictionary of your class titles and the corresponding grades (mark and score)
+      :rrtype: A dictionary
+
+      """
+      soup = BeautifulSoup(self.session.get('https://{}/PXP2_Gradebook.aspx?AGU=0'.format(self.district_domain).text, 'html.parser')
+      tbody = soup.find('tbody')
+      titles = [title.text[3::] for title in tbody.find_all('button', {'class': 'btn btn-link course-title'})]
+      marks = [mark.text for mark in tbody.find_all('span', {'class': 'mark'})]
+      scores = [score.text for score in tbody.find_all('span', {'class': 'score'})]
+      return {t: {'mark': m}, {'score': s} for (t, m, s) in zip(titles, marks, scores)}
+
