@@ -239,7 +239,7 @@ class StudentVue:
 
     def get_course_history(self):
         """
-        :return: Your full course history, including semester grades and number of credits earned per class.
+        :return: your full course history, including semester grades and number of credits earned per class.
         :rtype: dict of grade year paired with a list of semesters, each semester being a list of type studentvue.models.Course
         """
         course_history_page = BeautifulSoup(self.session.get(
@@ -283,8 +283,8 @@ class StudentVue:
         }
 
     @staticmethod
-    def _parse_course_history_page(page):
-        course_data = page.find('div', class_='chs-course-history').div
+    def _parse_course_history_page(course_history_page):
+        course_data = course_history_page.find('div', class_='chs-course-history').div
         yearly_tables = course_data.find_all('table')
         yearly_labels = course_data.find_all('h2')
         course_history = {}
@@ -307,6 +307,22 @@ class StudentVue:
                 semesters_courses.append(current_courses)
             course_history[yearly_labels[i].contents[2].strip()] = semesters_courses
         return course_history
+
+    def get_grade_book(self):
+        """
+        :return: your mark and score in all your graded classes
+        :rtype: dict of class name paired with a dict containing `mark` and `score` keys
+        """
+        grade_book_page = BeautifulSoup(self.session.get('https://{}/PXP2_Gradebook.aspx?AGU=0'.format(self.district_domain)).text, 'html.parser')
+        return self._parse_grade_book_page(grade_book_page)
+
+    @staticmethod
+    def _parse_grade_book_page(grade_book_page):
+        tbody = grade_book_page.find('tbody')
+        titles = [title.text[3::] for title in tbody.find_all('button', {'class': 'btn btn-link course-title'})]
+        marks = [mark.text for mark in tbody.find_all('span', {'class': 'mark'})]
+        scores = [score.text for score in tbody.find_all('span', {'class': 'score'})]
+        return {t: {'mark': m, 'score': s} for (t, m, s) in zip(titles, marks, scores)}
 
     def get_image(self, fp):
         """
@@ -337,17 +353,3 @@ class StudentVue:
                 }
             }
         )
-    
-    def get_grade_book(self): # gives your grades without the need to parse all your classes
-      """
-      :return: A dictionary of your class titles and the corresponding grades (mark and score)
-      :rrtype: A dictionary
-
-      """
-      soup = BeautifulSoup(self.session.get('https://{}/PXP2_Gradebook.aspx?AGU=0'.format(self.district_domain).text, 'html.parser')
-      tbody = soup.find('tbody')
-      titles = [title.text[3::] for title in tbody.find_all('button', {'class': 'btn btn-link course-title'})]
-      marks = [mark.text for mark in tbody.find_all('span', {'class': 'mark'})]
-      scores = [score.text for score in tbody.find_all('span', {'class': 'score'})]
-      return {t: {'mark': m}, {'score': s} for (t, m, s) in zip(titles, marks, scores)}
-
