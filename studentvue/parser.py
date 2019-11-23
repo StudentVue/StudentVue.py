@@ -23,14 +23,14 @@ class StudentVueParser:
         student_guid = re.match(r'Photos/[A-Z0-9]+/([A-Z0-9-]+)_Photo\.PNG', picture_src).group(1) \
             if picture_src != 'Images/PXP/NoPhoto.png' else None
 
-        return {
-            'id_': id_,
-            'name': name,
-            'school_name': school_name,
-            'school_phone': school_phone,
-            'picture_src': picture_src,
-            'student_guid': student_guid
-        }
+        return dict(
+            id_=id_,
+            name=name,
+            school_name=school_name,
+            school_phone=school_phone,
+            picture_src=picture_src,
+            student_guid=student_guid
+        )
 
     @staticmethod
     def parse_schedule_data(schedule_data):
@@ -57,16 +57,16 @@ class StudentVueParser:
         assignments = []
 
         for assignment in calendar_page.find_all('a', {'data-control': 'Gradebook_AssignmentDetails'}):
-            qs = parse_qs(assignment['href'])
+            query_string = parse_qs(assignment['href'])
 
             assignments.append(models.Assignment(
                 name=re.sub(r'- Score:.+', '', assignment.text[assignment.text.index(':') + 1:]).strip(),
                 class_name=assignment.text[:assignment.text.index(':')].strip(),
                 date=datetime.strptime(assignment.parent.parent.find('span', class_='datePick')['onclick'],
                                        'ChangeView(\'2\', \'%m/%d/%Y\')'),
-                assignment_id=int(qs['DGU'][0]),
-                grading_period=qs['GP'][0],
-                org_year_id=qs['SSY'][0]
+                assignment_id=int(query_string['DGU'][0]),
+                grading_period=query_string['GP'][0],
+                org_year_id=query_string['SSY'][0]
             ))
 
         return assignments
@@ -75,14 +75,14 @@ class StudentVueParser:
     def parse_student_info_page(student_info_page):
         student_info_table = student_info_page.find('table', class_='info_tbl')
 
-        tds = student_info_table.find_all('td')
+        cells = student_info_table.find_all('td')
 
-        keys = [td.span.text for td in tds]
+        keys = [cell.span.text for cell in cells]
 
-        for td in tds:
-            td.span.clear()
+        for cell in cells:
+            cell.span.clear()
 
-        values = [td.get_text(separator='\n') for td in tds]
+        values = [cell.get_text(separator='\n') for cell in cells]
 
         return {
             k: v for (k, v) in zip(keys, values)
@@ -92,19 +92,19 @@ class StudentVueParser:
     def parse_school_info_page(school_info_page):
         school_info_table = school_info_page.find('table')
 
-        tds = school_info_table.find_all('td')
+        cells = school_info_table.find_all('td')
 
-        keys = [td.span.text for td in tds]
+        keys = [cell.span.text for cell in cells]
 
-        for td in tds:
-            td.span.clear()
+        for cell in cells:
+            cell.span.clear()
 
         values = [
-            td.get_text(separator='\n') if len(td.find_all('span')) == 1 else models.Teacher(
-                name=td.find_all('span')[1].text.strip(),
-                email=helpers.parse_email(td.find_all('span')[1].find('a')['href'])
+            cell.get_text(separator='\n') if len(cell.find_all('span')) == 1 else models.Teacher(
+                name=cell.find_all('span')[1].text.strip(),
+                email=helpers.parse_email(cell.find_all('span')[1].find('a')['href'])
             )
-            for td in tds
+            for cell in cells
         ]
 
         return {
@@ -141,42 +141,46 @@ class StudentVueParser:
                 else float(assignment['GBPoints'].split('/')[1])
             ))
 
-        return {
-            'mark': grade_book_page.find('div', class_='mark').text,
-            'score': float(grade_book_page.find('div', class_='score').text[:-1]),
-            'assignments': assignments
-        }
+        return dict(
+            mark=grade_book_page.find('div', class_='mark').text,
+            score=float(grade_book_page.find('div', class_='score').text[:-1]),
+            assignments=assignments
+        )
 
     @staticmethod
     def parse_course_history_page(course_history_page):
-        course_data = course_history_page.find('div', class_='chs-course-history').div
-        yearly_tables = course_data.find_all('table')
-        yearly_labels = course_data.find_all('h2')
+        course_history_div = course_history_page.find('div', class_='chs-course-history').div
+        yearly_tables = course_history_div.find_all('table')
+        yearly_labels = course_history_div.find_all('h2')
         course_history = {}
-        for i in range(len(yearly_tables)):
-            current_table = yearly_tables[i]
+        for (current_table, year_label) in zip(yearly_tables, yearly_labels):
             semesters = current_table.find_all('tbody')
             semesters_courses = []
             for semester in semesters:
-                courses = semester.find_all('tr')
-                del courses[0]
+                rows = semester.find_all('tr')
+                del rows[0]
                 current_courses = []
-                for x in courses:
-                    course = list(filter(lambda index: (index != '\n'), x.strings))
+                for row in rows:
+                    course_data = list(filter(lambda string: (string != '\n'), row.strings))
                     current_courses.append(models.Course(
-                        name=course[0],
-                        mark=course[1],
-                        credits_attempted=float(course[2]),
-                        credits_completed=float(course[3]),
+                        name=course_data[0],
+                        mark=course_data[1],
+                        credits_attempted=float(course_data[2]),
+                        credits_completed=float(course_data[3])
                     ))
                 semesters_courses.append(current_courses)
-            course_history[yearly_labels[i].contents[2].strip()] = semesters_courses
+            course_history[year_label.contents[2].strip()] = semesters_courses
         return course_history
 
     @staticmethod
     def parse_grade_book_page(grade_book_page):
         tbody = grade_book_page.find('tbody')
-        titles = [title.text[3::] for title in tbody.find_all('button', {'class': 'btn btn-link course-title'})]
-        marks = [mark.text for mark in tbody.find_all('span', {'class': 'mark'})]
-        scores = [score.text for score in tbody.find_all('span', {'class': 'score'})]
-        return {t: {'mark': m, 'score': s} for (t, m, s) in zip(titles, marks, scores)}
+        course_names = [title.text[3::] for title in tbody.find_all('button', class_='btn btn-link course-title')]
+        marks = [mark.text for mark in tbody.find_all('span', class_='mark')]
+        scores = [score.text for score in tbody.find_all('span', class_='score')]
+        return {
+            course_name: dict(
+                mark=mark,
+                score=score
+            ) for (course_name, mark, score) in zip(course_names, marks, scores)
+        }

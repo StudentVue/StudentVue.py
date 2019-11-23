@@ -193,7 +193,7 @@ class StudentVue:
                     'loadOptions': load_options
                 }
             }
-        ))
+        ).text)
 
         data = data_grid['d']['Data']['data']
 
