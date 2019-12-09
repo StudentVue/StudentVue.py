@@ -1,12 +1,13 @@
 # Student Vue Scraper
-![travis](https://travis-ci.org/kajchang/studentvuescraper.svg?branch=master)
-![PyPI version](https://badge.fury.io/py/StudentVue.svg)
+![PyPI version](https://badge.fury.io/py/studentvue-old.svg)
+
+THIS LIBRARY IS FOR THE OLD VERSION OF STUDENTVUE. IT IS NOT MAINTAINED. FOR AN API FOR THE CURRENT VERSION GO TO THE [MASTER BRANCH](https://github.com/kajchang/StudentVue).
 
 This repository provides a easy way to access data from StudentVue portals in Python programs.
 
 # How to Use
 
-```pip install studentvue``` or clone / download the repository and ```python setup.py install```.
+```pip install studentvue-old``` or clone / download the repository and ```python setup.py install```.
 
 ```
 from studentvue import StudentVue

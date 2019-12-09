@@ -2,9 +2,9 @@ from setuptools import setup
 import os
 
 setup(
-    name='studentvue',
+    name='studentvue-old',
     packages=['studentvue'],
-    version='1.114',
+    version='1.0',
     description='Python Scraper for StudentVue Portals',
     author='Kai Chang',
     url='https://github.com/kajchang/studentvuescraper',
