@@ -34,7 +34,14 @@ class StudentVue:
             'https://{}/PXP2_Login_Student.aspx?regenerateSessionId=True'.format(self.district_domain)).text,
                                    'html.parser')
 
-        login_form_data = helpers.parse_form(login_page.find(id='aspnetForm'))
+        try:
+            login_form_data = helpers.parse_form(login_page.find(id='aspnetForm'))
+        except AttributeError:
+            raise Exception("""
+This library getting an AttributeError when trying to log in, which might mean that your school is on an older version of StudentVue.
+Try uninstalling this library (pip uninstall studentvue) and installing studentvue-old (pip uninstall studentvue-old).
+studentvue-old is not maintained and has a different API, but there is some minimal documentation: https://github.com/kajchang/StudentVue/tree/old-version.
+            """)
 
         login_form_data['ctl00$MainContent$username'] = username
         login_form_data['ctl00$MainContent$password'] = password

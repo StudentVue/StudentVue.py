@@ -8,6 +8,10 @@ Note:
 
 If this library isn't updating properly, try explictly installing the latest version (e.g. `pip3 install studentvue==1.2.1`) to fix this issue in the future.
 
+If you're getting an [AttributeError](https://github.com/kajchang/StudentVue/issues/12) when trying to log in, this might mean that your school is on an older version of StudentVue. Try uninstalling this library (`pip uninstall studentvue`) and installing `studentvue-old` (`pip uninstall studentvue-old`).
+
+`studentvue-old` is not maintained and has a different API, but there is some [minimal documentation](https://github.com/kajchang/StudentVue/tree/old-version).
+
 ## Logging In
 
 `pip install studentvue` or clone / download the repository and `python setup.py install`.
