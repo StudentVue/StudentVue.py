@@ -5,7 +5,6 @@ from urllib.parse import urlparse
 
 from datetime import datetime
 import json
-import re
 
 import studentvue.helpers as helpers
 from studentvue.parser import StudentVueParser
