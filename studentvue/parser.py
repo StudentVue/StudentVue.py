@@ -174,13 +174,22 @@ class StudentVueParser:
 
     @staticmethod
     def parse_grade_book_page(grade_book_page):
+        grade_book = {}
+
         tbody = grade_book_page.find('tbody')
-        course_names = [title.text[3::] for title in tbody.find_all('button', class_='btn btn-link course-title')]
-        marks = [mark.text for mark in tbody.find_all('span', class_='mark')]
-        scores = [score.text for score in tbody.find_all('span', class_='score')]
-        return {
-            course_name: dict(
-                mark=mark,
-                score=score
-            ) for (course_name, mark, score) in zip(course_names, marks, scores)
-        }
+        for course_button in tbody.find_all('button', class_='btn btn-link course-title'):
+            mark_periods = []
+            course_name = re.match(r'[0-9]+: (.+)', course_button.text).group(1)
+            data_guid = course_button.parent.parent['data-guid']
+            for mark_tr in tbody.find_all('tr', {'data-guid': data_guid, 'data-mark-gu': True}):
+                mark_period_name = mark_tr.find('button', class_='course-markperiod').text
+                mark = mark_tr.find('span', class_='mark').text
+                score = mark_tr.find('span', class_='score').text
+                mark_periods.append({
+                    'name': mark_period_name,
+                    'mark': mark,
+                    'score': score
+                })
+            grade_book[course_name] = mark_periods
+
+        return grade_book
