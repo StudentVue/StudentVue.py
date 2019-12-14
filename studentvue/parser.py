@@ -174,22 +174,27 @@ class StudentVueParser:
 
     @staticmethod
     def parse_grade_book_page(grade_book_page):
-        grade_book = {}
+        grade_book = []
 
         tbody = grade_book_page.find('tbody')
         for course_button in tbody.find_all('button', class_='btn btn-link course-title'):
-            mark_periods = []
+            marking_periods = []
             course_name = re.match(r'[0-9]+: (.+)', course_button.text).group(1)
             data_guid = course_button.parent.parent['data-guid']
             for mark_tr in tbody.find_all('tr', {'data-guid': data_guid, 'data-mark-gu': True}):
-                mark_period_name = mark_tr.find('button', class_='course-markperiod').text
+                mark_period_button = mark_tr.find('button', class_='course-markperiod')
                 mark = mark_tr.find('span', class_='mark').text
                 score = mark_tr.find('span', class_='score').text
-                mark_periods.append({
-                    'name': mark_period_name,
-                    'mark': mark,
-                    'score': score
-                })
-            grade_book[course_name] = mark_periods
+                marking_periods.append(models.GradedMarkingPeriod(
+                    name=mark_period_button.text,
+                    mark=mark,
+                    score=score,
+                    grade_book_control_params=json.loads(mark_period_button['data-focus'])['FocusArgs']
+                ))
+
+            grade_book.append(models.GradeBookEntry(
+                name=course_name,
+                marking_periods=marking_periods
+            ))
 
         return grade_book

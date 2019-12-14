@@ -137,31 +137,19 @@ studentvue-old is not maintained and has a different API, but there is some mini
 
         return self.parser.parse_school_info_page(school_info_page)
 
-    def get_class_info(self, class_):
+    def get_grade_book_class_info(self, marking_period):
         """
-        :param class_: the class to get info for
-        :type class_: studentvue.models.Class
+        :param marking_period: the class to get info for
+        :type marking_period: studentvue.models.MarkingPeriod
         :return: your current grades and assignments in the specified class
         :rtype: dict containing `grade`, `mark`, and `assignments` keys
         """
-        grade_book_page = BeautifulSoup(self.session.get(
-            'https://{}/PXP2_Gradebook.aspx?AGU=0'.format(self.district_domain)).text, 'html.parser')
-
-        button = grade_book_page.find('button',
-                                      text='{period}: {name}'.format(**class_.__dict__),
-                                      class_='course-title')
-
-        if button is None:
-            return None
-
-        focus_data = json.loads(button['data-focus'])
-
         grade_book_class_page = self._get_load_control(
-            focus_data['LoadParams']['ControlName'],
-            focus_data['FocusArgs']
+            'Gradebook_ClassDetails',
+            marking_period.grade_book_control_params
         )
 
-        return self.parser.parse_grade_book_class_page(grade_book_class_page, class_.name)
+        return self.parser.parse_grade_book_class_page(grade_book_class_page, marking_period.parent.name)
 
     def get_course_history(self):
         """
