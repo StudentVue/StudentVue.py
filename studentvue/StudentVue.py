@@ -1,17 +1,31 @@
-import requests
+from requests_cache import CachedSession
+from requests_cache.backends import BaseCache
 from bs4 import BeautifulSoup
 
 from urllib.parse import urlparse
 
 from datetime import datetime
+import re
 import json
 
 from studentvue.StudentVueParser import StudentVueParser
-import studentvue.Control as Control
 import studentvue.helpers as helpers
 import studentvue.models as models
 
 import typing
+
+URLS = {
+    'LOGIN': 'https://{}/PXP2_Login_Student.aspx?regenerateSessionId=True',
+    'HOME': 'https://{}/Home_PXP2.aspx',
+    'SCHEDULE': 'https://{}/PXP2_ClassSchedule.aspx?AGU=0',
+    'CALENDAR': 'https://{}/PXP2_Calendar.aspx?AGU=0',
+    'STUDENT_INFO': 'https://{}/PXP2_MyAccount.aspx?AGU=0',
+    'SCHOOL_INFO': 'https://{}/PXP2_SchoolInformation.aspx?AGU=0',
+    'COURSE_HISTORY': 'https://{}/PXP2_CourseHistory.aspx?AGU=0',
+    'GRADE_BOOK': 'https://{}/PXP2_Gradebook.aspx?AGU=0',
+    'DATA_GRID': 'https://{}/service/PXP2Communication.asmx/DXDataGridRequest',
+    'LOAD_CONTROL': 'https://{}/service/PXP2Communication.asmx/LoadControl'
+}
 
 
 class StudentVue:
@@ -21,7 +35,9 @@ class StudentVue:
                  username: str,
                  password: str,
                  district_domain: str,
-                 parser: typing.Type[StudentVueParser] = StudentVueParser):
+                 parser: typing.Type[StudentVueParser] = StudentVueParser,
+                 cache_backend: typing.Union[typing.Type[BaseCache], str] = 'memory'
+                 ):
         """
         :param username: your StudentVue account's username
         :type username: str
@@ -29,18 +45,26 @@ class StudentVue:
         :type password: str
         :param district_domain: your school district's StudentVue domain
         :type district_domain: str
+        :param parser: HTML/JSON parser that extracts relevant data
+        :type parser: studentvue.StudentVueParser.StudentVueParser
+        :param cache_backend: requests-cache backend
+        :type cache_backend: requests_cache.backends.BaseCache
         """
+
         self.parser = parser
 
         self.district_domain = urlparse(district_domain).netloc + urlparse(district_domain).path
         if self.district_domain[len(self.district_domain) - 1] == '/':
             self.district_domain = self.district_domain[:-1]
 
-        self.session = requests.Session()
+        self.session = CachedSession(
+            cache_name=username,
+            backend=cache_backend,
+            expire_after=15 * 60,
+            allowable_methods=('GET', 'POST')
+        )
 
-        login_page = BeautifulSoup(self.session.get(
-            'https://{}/PXP2_Login_Student.aspx?regenerateSessionId=True'.format(self.district_domain)).text,
-                                   'html.parser')
+        login_page = BeautifulSoup(self.session.get(URLS['LOGIN'].format(self.district_domain)).text, 'html.parser')
 
         try:
             login_form_data = helpers.parse_form(login_page.find(id='aspnetForm'))
@@ -54,10 +78,9 @@ studentvue-old is not maintained and has a different API, but there is some mini
         login_form_data['ctl00$MainContent$username'] = username
         login_form_data['ctl00$MainContent$password'] = password
 
-        resp = self.session.post('https://{}/PXP2_Login_Student.aspx?regenerateSessionId=True'.format(
-            self.district_domain), data=login_form_data)
+        resp = self.session.post(URLS['LOGIN'].format(self.district_domain), data=login_form_data)
 
-        if resp.url != 'https://{}/Home_PXP2.aspx'.format(self.district_domain):
+        if resp.url != URLS['HOME'].format(self.district_domain):
             raise ValueError('Incorrect Username or Password')
 
         home_page = BeautifulSoup(resp.text, 'html.parser')
@@ -84,9 +107,8 @@ studentvue-old is not maintained and has a different API, but there is some mini
         else:
             semester_parameter = ''
 
-        schedule_page = BeautifulSoup(self.session.get(
-            'https://{}/PXP2_ClassSchedule.aspx?AGU=0'.format(self.district_domain) +
-            semester_parameter).text, 'html.parser')
+        schedule_page = BeautifulSoup(self.session.get(URLS['SCHEDULE'].format(self.district_domain) +
+                                                       semester_parameter).text, 'html.parser')
 
         script = schedule_page.find_all('script', {'type': 'text/javascript'})[-1]
         try:
@@ -119,14 +141,14 @@ studentvue-old is not maintained and has a different API, but there is some mini
         :return: a list of the assignments due in the specified month
         :rtype: list of studentvue.model.Assignment
         """
-        calendar_page = BeautifulSoup(self.session.get(
-            'https://{}/PXP2_Calendar.aspx?AGU=0'.format(self.district_domain)).text, 'html.parser')
+        calendar_page = BeautifulSoup(self.session.get(URLS['CALENDAR'].format(self.district_domain)).text,
+                                      'html.parser')
 
         if month is not datetime.now().month or year is not datetime.now().year:
-            calender_form_data = helpers.parse_form(calendar_page.find(id='aspnetForm'))
-            calender_form_data['LB'] = '{}/1/{}'.format(month, year)
-            calendar_page = BeautifulSoup(self.session.post(
-                'https://{}/PXP2_Calendar.aspx?AGU=0'.format(self.district_domain), data=calender_form_data).text,
+            calendar_form_data = helpers.parse_form(calendar_page.find(id='aspnetForm'))
+            calendar_form_data['LB'] = '{}/1/{}'.format(month, year)
+            calendar_page = BeautifulSoup(self.session.post(URLS['CALENDAR'].format(self.district_domain),
+                                                            data=calendar_form_data).text,
                                           'html.parser')
 
         return self.parser.parse_calendar_page(calendar_page)
@@ -136,8 +158,8 @@ studentvue-old is not maintained and has a different API, but there is some mini
         :return: miscellaneous student information
         :rtype: dict of (str, str)
         """
-        student_info_page = BeautifulSoup(self.session.get(
-            'https://{}/PXP2_MyAccount.aspx?AGU=0'.format(self.district_domain)).text, 'html.parser')
+        student_info_page = BeautifulSoup(self.session.get(URLS['STUDENT_INFO'].format(self.district_domain)).text,
+                                          'html.parser')
 
         return self.parser.parse_student_info_page(student_info_page)
 
@@ -146,8 +168,8 @@ studentvue-old is not maintained and has a different API, but there is some mini
         :return: miscellaneous school information
         :rtype: dict of (str, str)
         """
-        school_info_page = BeautifulSoup(self.session.get(
-            'https://{}/PXP2_SchoolInformation.aspx?AGU=0'.format(self.district_domain)).text, 'html.parser')
+        school_info_page = BeautifulSoup(self.session.get(URLS['SCHOOL_INFO'].format(self.district_domain)).text,
+                                         'html.parser')
 
         return self.parser.parse_school_info_page(school_info_page)
 
@@ -172,31 +194,47 @@ studentvue-old is not maintained and has a different API, but there is some mini
         :return: your full course history, including semester grades and number of credits earned per class.
         :rtype: dict of grade year paired with a list of semesters, each semester being a list of type studentvue.models.Course
         """
-        course_history_page = BeautifulSoup(self.session.get(
-            'https://{}/PXP2_CourseHistory.aspx?AGU=0'.format(self.district_domain)).text, 'html.parser')
+        course_history_page = BeautifulSoup(self.session.get(URLS['COURSE_HISTORY'].format(self.district_domain)).text,
+                                            'html.parser')
         return self.parser.parse_course_history_page(course_history_page)
 
-    def get_grade_book(self, grading_period: models.GradingPeriod = None) -> dict:
+    def get_grading_periods(self) -> typing.List[str]:
+        """
+        :return: your school's grading periods
+        :rtype: list of grading period names
+        """
+        grade_book_page = BeautifulSoup(self.session.get(URLS['GRADE_BOOK'].format(self.district_domain)).text,
+                                        'html.parser')
+
+        return self.parser.parse_grade_book_page_for_grading_periods(grade_book_page)
+
+    def get_grade_book(self, grading_period: str = None) -> typing.Dict[str, dict]:
         """
         :return: your mark and score in all your graded classes
-        :rtype: dict of
-            `more` - list of other fetch-able grading periods
-            `current` - fetched grading period
-            `data` - dict of class names paired with a list of dicts of
+        :rtype: dict of class names paired with a list of dicts of
                 `score` - grade as a percentage
                 `mark` - letter grade
                 `marking_period` - marking period
                 `grading_period` - grading period
         """
+        grade_book_page = BeautifulSoup(self.session.get(URLS['GRADE_BOOK'].format(self.district_domain)).text,
+                                        'html.parser')
+
         if grading_period is not None:
-            grade_book_page = self._load_control(Control.Gradebook_SchoolClasses_Control, {
-                'gradePeriodGU': grading_period.guid
+            dropdown_menu = grade_book_page.find('ul', class_='dropdown-menu')
+            grading_period_link = dropdown_menu.find('a', text=re.compile(r'\s+' + grading_period + r'\s+'))
+
+            update_panel = grade_book_page.find('div', class_='update-panel')
+
+            grade_book_page = self._load_control('Gradebook_SchoolClasses', {
+                'AGU': 0,
+                'gradePeriodGU': grading_period_link['data-period-id'],
+                'GradingPeriodGroup': 'Regular',
+                'OrgYearGU': update_panel['data-orgyear-id'],
+                'schoolID': update_panel['data-school-id']
             })
-        else:
-            grade_book_page = BeautifulSoup(
-                self.session.get('https://{}/PXP2_Gradebook.aspx?AGU=0'.format(self.district_domain)).text,
-                'html.parser')
-        return self.parser.parse_grade_book_page(grade_book_page)
+
+        return self.parser.parse_grade_book_page_for_grades(grade_book_page)
 
     def get_image(self, fp: typing.BinaryIO) -> None:
         """
@@ -208,7 +246,7 @@ studentvue-old is not maintained and has a different API, but there is some mini
 
     def _get_data_grid(self, name: str, params: dict, load_options: dict) -> object:
         data_grid = json.loads(self.session.post(
-            'https://{}/service/PXP2Communication.asmx/DXDataGridRequest'.format(self.district_domain),
+            URLS['DATA_GRID'].format(self.district_domain),
             json={
                 'request': {
                     'agu': 0,
@@ -218,19 +256,19 @@ studentvue-old is not maintained and has a different API, but there is some mini
                     'loadOptions': load_options
                 }
             }
-            ).text)
+        ).text)
 
         data = data_grid['d']['Data']['data']
 
         return data
 
-    def _load_control(self, load_control: typing.Type[Control.Control], params: dict) -> BeautifulSoup:
-        control = json.loads(self.session.post('https://{}/service/PXP2Communication.asmx/LoadControl'.format(
-            self.district_domain),
+    def _load_control(self, control_name: str, params: dict) -> BeautifulSoup:
+        control = json.loads(self.session.post(
+            URLS['LOAD_CONTROL'].format(self.district_domain),
             json={
                 'request': {
-                    'control': load_control.name,
-                    'parameters': load_control(params).generated_params
+                    'control': control_name,
+                    'parameters': params
                 }
             }
         ).text)

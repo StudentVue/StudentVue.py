@@ -5,7 +5,6 @@ from datetime import datetime
 import json
 import re
 
-from studentvue.ParamCache import ParamCache
 import studentvue.models as models
 import studentvue.helpers as helpers
 
@@ -177,18 +176,8 @@ class StudentVueParser:
         return course_history
 
     @staticmethod
-    def parse_grade_book_page(grade_book_page: BeautifulSoup) -> dict:
-        update_panel = grade_book_page.find('div', class_='update-panel')
-        ParamCache().set('schoolID', update_panel['data-school-id'])
-        ParamCache().set('OrgYearGU', update_panel['data-orgyear-id'])
-
+    def parse_grade_book_page_for_grades(grade_book_page: BeautifulSoup) -> dict:
         grade_book = {}
-
-        term_selector = grade_book_page.find('div', class_='term-selector')
-        grading_period = models.GradingPeriod(
-            name=term_selector.find('button', {'data-term-name': True}).text.strip(),
-            guid=term_selector.find('button', {'data-term-name': True})['data-term-name']
-        )
 
         tbody = grade_book_page.find('tbody')
         for course_button in tbody.find_all('button', class_='btn btn-link course-title'):
@@ -200,24 +189,19 @@ class StudentVueParser:
                 mark = mark_tr.find('span', class_='mark').text
                 score = mark_tr.find('span', class_='score').text
                 marking_periods.append({
-                    'marking_period': models.MarkingPeriod(
-                        name=mark_period_button.text,
-                        guid=mark_tr['data-mark-gu']
-                    ),
-                    'grading_period': grading_period,
+                    'name': mark_period_button.text,
                     'mark': mark,
                     'score': score
                 })
 
             grade_book[course_name] = marking_periods
 
-        return dict(
-            current=grading_period,
-            more=[
-                models.GradingPeriod(
-                    name=link.text.strip(),
-                    guid=link['data-period-id']
-                ) for link in term_selector.find('ul', class_='dropdown-menu').find_all('a')
-            ],
-            data=grade_book
-        )
+        return grade_book
+
+    @staticmethod
+    def parse_grade_book_page_for_grading_periods(grade_book_page: BeautifulSoup) -> typing.List[str]:
+        term_selector = grade_book_page.find('div', class_='term-selector')
+        # current_grading_period = term_selector.find('button', {'data-term-name': True}).text.strip()
+        grading_periods = [link.text.strip() for link in term_selector.find('ul', class_='dropdown-menu').find_all('a')]
+
+        return grading_periods

@@ -1,2 +1,3 @@
 requests>=2.20.0
+requests-cache>=1.24.1
 beautifulsoup4>=4.6.3

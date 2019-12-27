@@ -78,18 +78,3 @@ class Course(dict):
 
     def _asdict(self):
         return self.__dict__
-
-
-class GradingPeriod(dict):
-    def __init__(self, name, guid):
-        self.name = name
-        self.guid = guid
-
-        super().__init__(**self._asdict())
-
-    def _asdict(self):
-        return self.__dict__
-
-
-class MarkingPeriod(GradingPeriod):
-    pass
