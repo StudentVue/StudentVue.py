@@ -115,7 +115,8 @@ class StudentVueParser:
         }
 
     @staticmethod
-    def parse_grade_book_class_page(grade_book_page: BeautifulSoup, class_name: str) -> dict:
+    def parse_grade_book_class_page(grade_book_page: BeautifulSoup, class_name: str
+                                    ) -> typing.Dict[str, typing.Union[str, typing.List[models.GradedAssignment], float]]:
         assignments = []
 
         for assignment in json.loads(
@@ -176,7 +177,8 @@ class StudentVueParser:
         return course_history
 
     @staticmethod
-    def parse_grade_book_page_for_grades(grade_book_page: BeautifulSoup) -> dict:
+    def parse_grade_book_page_for_grades(grade_book_page: BeautifulSoup
+                                         ) -> typing.Dict[str, typing.List[typing.Dict[str, str]]]:
         grade_book = {}
 
         tbody = grade_book_page.find('tbody')
@@ -199,9 +201,12 @@ class StudentVueParser:
         return grade_book
 
     @staticmethod
-    def parse_grade_book_page_for_grading_periods(grade_book_page: BeautifulSoup) -> typing.List[str]:
-        term_selector = grade_book_page.find('div', class_='term-selector')
-        # current_grading_period = term_selector.find('button', {'data-term-name': True}).text.strip()
-        grading_periods = [link.text.strip() for link in term_selector.find('ul', class_='dropdown-menu').find_all('a')]
+    def parse_grade_book_page_for_grading_periods(grade_book_page: BeautifulSoup) -> typing.Dict[str, typing.List[str]]:
+        grade_book_focus_data = json.loads(helpers.get_variable(grade_book_page.text, 'PXP.GBFocusData'))
 
-        return grading_periods
+        return {
+            k: v for (k, v) in (
+                (grading_period['Name'], [marking_period['Name'] for marking_period in grading_period['MarkPeriods']])
+                for grading_period in grade_book_focus_data['GradingPeriods']
+            )
+        }

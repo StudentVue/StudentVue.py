@@ -5,7 +5,6 @@ from bs4 import BeautifulSoup
 from urllib.parse import urlparse
 
 from datetime import datetime
-import re
 import json
 
 from studentvue.StudentVueParser import StudentVueParser
@@ -24,7 +23,8 @@ URLS = {
     'COURSE_HISTORY': 'https://{}/PXP2_CourseHistory.aspx?AGU=0',
     'GRADE_BOOK': 'https://{}/PXP2_Gradebook.aspx?AGU=0',
     'DATA_GRID': 'https://{}/service/PXP2Communication.asmx/DXDataGridRequest',
-    'LOAD_CONTROL': 'https://{}/service/PXP2Communication.asmx/LoadControl'
+    'LOAD_CONTROL': 'https://{}/service/PXP2Communication.asmx/LoadControl',
+    'GRADE_BOOK_FOCUS_INFO': 'https://{}/service/PXP2Communication.asmx/GradebookFocusClassInfo'
 }
 
 
@@ -173,21 +173,69 @@ studentvue-old is not maintained and has a different API, but there is some mini
 
         return self.parser.parse_school_info_page(school_info_page)
 
-    """
-    def get_marking_period_info(self, marking_period):
-        """"""
-        :param marking_period: the class to get info for
-        :type marking_period: studentvue.models.MarkingPeriod
+    def get_class_info(self, class_name: str, marking_period: str
+                       ) -> typing.Dict[str, typing.Union[str, typing.List[models.GradedAssignment], float]]:
+        """
+        :param: class_name: name of class to get info for
+        :type class_name: str
+        :param marking_period: marking period to get info for
+        :type marking_period: str
         :return: your current grades and assignments in the specified class
         :rtype: dict containing `grade`, `mark`, and `assignments` keys
-        """"""
-        grade_book_class_page = self._get_load_control(
-            'Gradebook_ClassDetails',
-            marking_period.grade_book_control_params
-        )
+        """
+        grade_book_page = BeautifulSoup(self.session.get(URLS['GRADE_BOOK'].format(self.district_domain)).text,
+                                        'html.parser')
 
-        return self.parser.parse_grade_book_class_page(grade_book_class_page, marking_period.for_)
-    """
+        grade_book_focus_data = json.loads(helpers.get_variable(grade_book_page.text, 'PXP.GBFocusData'))
+
+        found = False
+
+        for grading_period_focus_data in grade_book_focus_data['GradingPeriods']:
+            for marking_period_focus_data in grading_period_focus_data['MarkPeriods']:
+                if marking_period_focus_data['Name'] == marking_period:
+                    found = True
+                    break
+            if found:
+                break
+        else:
+            raise ValueError('Marking period "' + marking_period + '" not found.')
+
+        # noinspection PyUnboundLocalVariable
+        grade_book_focus_class_data = self.session.post(
+            URLS['GRADE_BOOK_FOCUS_INFO'].format(self.district_domain),
+            json={
+                'request': {
+                    'AGU': 0,
+                    'gradingPeriodGU': grading_period_focus_data['GU'],
+                    'markPeriodGU': marking_period_focus_data['GU'],
+                    'orgYearGU': grading_period_focus_data['OrgYearGU'],
+                    'schoolID': grading_period_focus_data['schoolID']
+                }
+            }
+        ).json()
+
+        for class_data in grade_book_focus_class_data['d']['Data']['Classes']:
+            if class_data['Name'] == class_name:
+                break
+        else:
+            raise ValueError('Class "' + class_name + '" not found.')
+
+        grade_book_class_page = self._load_control('Gradebook_ClassDetails', {
+            'AGU': 0,
+            'assignmentID': -1,
+            'classID': class_data['ID'],
+            'gradePeriodGU': grading_period_focus_data['GU'],
+            'markPeriodGU': marking_period_focus_data['GU'],
+            'OrgYearGU': grading_period_focus_data['OrgYearGU'],
+            'schoolID': grading_period_focus_data['schoolID'],
+            'standardIdentifier': None,
+            'studentGU': self.student_guid,
+            'subjectID': -1,
+            'teacherID': -1,
+            'viewName': None
+        })
+
+        return self.parser.parse_grade_book_class_page(grade_book_class_page, class_name)
 
     def get_course_history(self) -> typing.Dict[str, typing.List[typing.List[models.Course]]]:
         """
@@ -198,18 +246,20 @@ studentvue-old is not maintained and has a different API, but there is some mini
                                             'html.parser')
         return self.parser.parse_course_history_page(course_history_page)
 
-    def get_grading_periods(self) -> typing.List[str]:
+    def get_grading_periods(self) -> typing.Dict[str, typing.List[str]]:
         """
         :return: your school's grading periods
-        :rtype: list of grading period names
+        :rtype: dict of grading period names paired with lists of marking period names
         """
         grade_book_page = BeautifulSoup(self.session.get(URLS['GRADE_BOOK'].format(self.district_domain)).text,
                                         'html.parser')
 
         return self.parser.parse_grade_book_page_for_grading_periods(grade_book_page)
 
-    def get_grade_book(self, grading_period: str = None) -> typing.Dict[str, dict]:
+    def get_grade_book(self, grading_period: str = None) -> typing.Dict[str, typing.List[typing.Dict[str, str]]]:
         """
+        :param grading_period: (optional) grading period to get grades for, default to current
+        :type grading_period: str
         :return: your mark and score in all your graded classes
         :rtype: dict of class names paired with a list of dicts of
                 `score` - grade as a percentage
@@ -221,17 +271,21 @@ studentvue-old is not maintained and has a different API, but there is some mini
                                         'html.parser')
 
         if grading_period is not None:
-            dropdown_menu = grade_book_page.find('ul', class_='dropdown-menu')
-            grading_period_link = dropdown_menu.find('a', text=re.compile(r'\s+' + grading_period + r'\s+'))
+            grade_book_focus_data = json.loads(helpers.get_variable(grade_book_page.text, 'PXP.GBFocusData'))
 
-            update_panel = grade_book_page.find('div', class_='update-panel')
+            for g_p_data in grade_book_focus_data['GradingPeriods']:
+                if g_p_data['Name'] == grading_period:
+                    grading_period_focus_data = g_p_data
+                    break
+            else:
+                raise ValueError('Grading period "' + grading_period + '" not found.')
 
             grade_book_page = self._load_control('Gradebook_SchoolClasses', {
                 'AGU': 0,
-                'gradePeriodGU': grading_period_link['data-period-id'],
-                'GradingPeriodGroup': 'Regular',
-                'OrgYearGU': update_panel['data-orgyear-id'],
-                'schoolID': update_panel['data-school-id']
+                'gradePeriodGU': grading_period_focus_data['GU'],
+                'GradingPeriodGroup': grading_period_focus_data['GroupName'],
+                'OrgYearGU': grading_period_focus_data['OrgYearGU'],
+                'schoolID': grading_period_focus_data['schoolID']
             })
 
         return self.parser.parse_grade_book_page_for_grades(grade_book_page)
@@ -244,8 +298,8 @@ studentvue-old is not maintained and has a different API, but there is some mini
         """
         fp.write(self.session.get(self.picture_url).content)
 
-    def _get_data_grid(self, name: str, params: dict, load_options: dict) -> object:
-        data_grid = json.loads(self.session.post(
+    def _get_data_grid(self, name: str, params: dict, load_options: dict) -> typing.Union[list, dict]:
+        data_grid = self.session.post(
             URLS['DATA_GRID'].format(self.district_domain),
             json={
                 'request': {
@@ -256,14 +310,14 @@ studentvue-old is not maintained and has a different API, but there is some mini
                     'loadOptions': load_options
                 }
             }
-        ).text)
+        ).json()
 
         data = data_grid['d']['Data']['data']
 
         return data
 
     def _load_control(self, control_name: str, params: dict) -> BeautifulSoup:
-        control = json.loads(self.session.post(
+        control = self.session.post(
             URLS['LOAD_CONTROL'].format(self.district_domain),
             json={
                 'request': {
@@ -271,7 +325,7 @@ studentvue-old is not maintained and has a different API, but there is some mini
                     'parameters': params
                 }
             }
-        ).text)
+        ).json()
 
         soup = BeautifulSoup(control['d']['Data']['html'], 'html.parser')
 

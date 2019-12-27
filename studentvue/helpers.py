@@ -19,3 +19,9 @@ def parse_form(form):
 def parse_email(text):
     match = re.search(r'([a-zA-z0-9]+@[a-zA-z]+.[a-zA-z]+)', text)
     return match.group(1) if match else text
+
+
+# parses out a javascript variable
+def get_variable(script, name):
+    match = re.search(name + r' = (.+);', script)
+    return match.group(1) if match else None
