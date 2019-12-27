@@ -49,8 +49,7 @@ class StudentVueParser:
                 teacher=models.Teacher(
                     name=teacher['teacherName'],
                     email=teacher['email']
-                ),
-                class_id=class_['ID']
+                )
             ))
 
         return classes
@@ -68,7 +67,7 @@ class StudentVueParser:
                 date=datetime.strptime(assignment.parent.parent.find('span', class_='datePick')['onclick'],
                                        'ChangeView(\'2\', \'%m/%d/%Y\')'),
                 assignment_id=int(query_string['DGU'][0]),
-                grading_period=query_string['GP'][0],
+                grading_period_id=query_string['GP'][0],
                 org_year_id=query_string['SSY'][0]
             ))
 
@@ -136,7 +135,7 @@ class StudentVueParser:
                 class_name=class_name,
                 date=datetime.strptime(assignment['Date'], '%m/%d/%Y'),
                 assignment_id=int(assignment['gradeBookId']),
-                grading_period=focus_args['gradePeriodGU'],
+                grading_period_id=focus_args['gradePeriodGU'],
                 org_year_id=focus_args['OrgYearGU'],
                 score=None if 'Points Possible' in assignment['GBPoints']
                 else float(assignment['GBPoints'].split('/')[0]),
@@ -152,7 +151,8 @@ class StudentVueParser:
         )
 
     @staticmethod
-    def parse_course_history_page(course_history_page: BeautifulSoup) -> typing.Dict[str, typing.List[typing.List[models.Course]]]:
+    def parse_course_history_page(course_history_page: BeautifulSoup
+                                  ) -> typing.Dict[str, typing.List[typing.List[models.Course]]]:
         course_history_div = course_history_page.find('div', class_='chs-course-history').div
         yearly_tables = course_history_div.find_all('table')
         yearly_labels = course_history_div.find_all('h2')

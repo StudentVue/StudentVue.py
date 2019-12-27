@@ -273,9 +273,8 @@ studentvue-old is not maintained and has a different API, but there is some mini
         if grading_period is not None:
             grade_book_focus_data = json.loads(helpers.get_variable(grade_book_page.text, 'PXP.GBFocusData'))
 
-            for g_p_data in grade_book_focus_data['GradingPeriods']:
-                if g_p_data['Name'] == grading_period:
-                    grading_period_focus_data = g_p_data
+            for grading_period_focus_data in grade_book_focus_data['GradingPeriods']:
+                if grading_period_focus_data['Name'] == grading_period:
                     break
             else:
                 raise ValueError('Grading period "' + grading_period + '" not found.')
