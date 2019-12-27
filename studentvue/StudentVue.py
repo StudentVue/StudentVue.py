@@ -6,13 +6,22 @@ from urllib.parse import urlparse
 from datetime import datetime
 import json
 
+from studentvue.StudentVueParser import StudentVueParser
+import studentvue.Control as Control
 import studentvue.helpers as helpers
-from studentvue.parser import StudentVueParser
+import studentvue.models as models
+
+import typing
 
 
 class StudentVue:
     """The StudentVue scraper object."""
-    def __init__(self, username, password, district_domain, parser=StudentVueParser):
+
+    def __init__(self,
+                 username: str,
+                 password: str,
+                 district_domain: str,
+                 parser: typing.Type[StudentVueParser] = StudentVueParser):
         """
         :param username: your StudentVue account's username
         :type username: str
@@ -63,7 +72,7 @@ studentvue-old is not maintained and has a different API, but there is some mini
         self.picture_url = 'https://{}/{}'.format(self.district_domain, home_page_data['picture_src'])
         self.student_guid = home_page_data['student_guid']
 
-    def get_schedule(self, semester=None):
+    def get_schedule(self, semester: int = None) -> typing.List[models.Class]:
         """
         :param semester: (optional) if provided, it will get the schedule for that semester instead of the default one
         :type semester: int
@@ -95,9 +104,13 @@ studentvue-old is not maintained and has a different API, but there is some mini
             'take': 15
         })
 
-        return self.parser.parse_schedule_data(schedule_data)
+        return self.parser.parse_schedule_data(
+            typing.cast(typing.List[typing.Dict[str, str]], schedule_data)
+        )
 
-    def get_assignments(self, month=datetime.now().month, year=datetime.now().year):
+    def get_assignments(self,
+                        month: int = datetime.now().month,
+                        year: int = datetime.now().year) -> typing.List[models.Assignment]:
         """
         :param month: the month to get assignments from, defaults to the current month
         :type month: int
@@ -113,11 +126,12 @@ studentvue-old is not maintained and has a different API, but there is some mini
             calender_form_data = helpers.parse_form(calendar_page.find(id='aspnetForm'))
             calender_form_data['LB'] = '{}/1/{}'.format(month, year)
             calendar_page = BeautifulSoup(self.session.post(
-                'https://{}/PXP2_Calendar.aspx?AGU=0'.format(self.district_domain), data=calender_form_data).text, 'html.parser')
+                'https://{}/PXP2_Calendar.aspx?AGU=0'.format(self.district_domain), data=calender_form_data).text,
+                                          'html.parser')
 
         return self.parser.parse_calendar_page(calendar_page)
 
-    def get_student_info(self):
+    def get_student_info(self) -> typing.Dict[str, str]:
         """
         :return: miscellaneous student information
         :rtype: dict of (str, str)
@@ -127,7 +141,7 @@ studentvue-old is not maintained and has a different API, but there is some mini
 
         return self.parser.parse_student_info_page(student_info_page)
 
-    def get_school_info(self):
+    def get_school_info(self) -> typing.Dict[str, str]:
         """
         :return: miscellaneous school information
         :rtype: dict of (str, str)
@@ -137,21 +151,23 @@ studentvue-old is not maintained and has a different API, but there is some mini
 
         return self.parser.parse_school_info_page(school_info_page)
 
-    def get_grade_book_class_info(self, marking_period):
-        """
+    """
+    def get_marking_period_info(self, marking_period):
+        """"""
         :param marking_period: the class to get info for
         :type marking_period: studentvue.models.MarkingPeriod
         :return: your current grades and assignments in the specified class
         :rtype: dict containing `grade`, `mark`, and `assignments` keys
-        """
+        """"""
         grade_book_class_page = self._get_load_control(
             'Gradebook_ClassDetails',
             marking_period.grade_book_control_params
         )
 
-        return self.parser.parse_grade_book_class_page(grade_book_class_page, marking_period.parent.name)
+        return self.parser.parse_grade_book_class_page(grade_book_class_page, marking_period.for_)
+    """
 
-    def get_course_history(self):
+    def get_course_history(self) -> typing.Dict[str, typing.List[typing.List[models.Course]]]:
         """
         :return: your full course history, including semester grades and number of credits earned per class.
         :rtype: dict of grade year paired with a list of semesters, each semester being a list of type studentvue.models.Course
@@ -160,15 +176,29 @@ studentvue-old is not maintained and has a different API, but there is some mini
             'https://{}/PXP2_CourseHistory.aspx?AGU=0'.format(self.district_domain)).text, 'html.parser')
         return self.parser.parse_course_history_page(course_history_page)
 
-    def get_grade_book(self):
+    def get_grade_book(self, grading_period: models.GradingPeriod = None) -> dict:
         """
         :return: your mark and score in all your graded classes
-        :rtype: dict of class name paired with a dict containing `mark` and `score` keys
+        :rtype: dict of
+            `more` - list of other fetch-able grading periods
+            `current` - fetched grading period
+            `data` - dict of class names paired with a list of dicts of
+                `score` - grade as a percentage
+                `mark` - letter grade
+                `marking_period` - marking period
+                `grading_period` - grading period
         """
-        grade_book_page = BeautifulSoup(self.session.get('https://{}/PXP2_Gradebook.aspx?AGU=0'.format(self.district_domain)).text, 'html.parser')
+        if grading_period is not None:
+            grade_book_page = self._load_control(Control.Gradebook_SchoolClasses_Control, {
+                'gradePeriodGU': grading_period.guid
+            })
+        else:
+            grade_book_page = BeautifulSoup(
+                self.session.get('https://{}/PXP2_Gradebook.aspx?AGU=0'.format(self.district_domain)).text,
+                'html.parser')
         return self.parser.parse_grade_book_page(grade_book_page)
 
-    def get_image(self, fp):
+    def get_image(self, fp: typing.BinaryIO) -> None:
         """
         :param fp: file-like object to write to
         :return: your school photo
@@ -176,8 +206,9 @@ studentvue-old is not maintained and has a different API, but there is some mini
         """
         fp.write(self.session.get(self.picture_url).content)
 
-    def _get_data_grid(self, name, params, load_options):
-        data_grid = json.loads(self.session.post('https://{}/service/PXP2Communication.asmx/DXDataGridRequest'.format(self.district_domain),
+    def _get_data_grid(self, name: str, params: dict, load_options: dict) -> object:
+        data_grid = json.loads(self.session.post(
+            'https://{}/service/PXP2Communication.asmx/DXDataGridRequest'.format(self.district_domain),
             json={
                 'request': {
                     'agu': 0,
@@ -187,22 +218,23 @@ studentvue-old is not maintained and has a different API, but there is some mini
                     'loadOptions': load_options
                 }
             }
-        ).text)
+            ).text)
 
         data = data_grid['d']['Data']['data']
 
         return data
 
-    def _get_load_control(self, control, params):
-        load_control = json.loads(self.session.post('https://{}/service/PXP2Communication.asmx/LoadControl'.format(self.district_domain),
+    def _load_control(self, load_control: typing.Type[Control.Control], params: dict) -> BeautifulSoup:
+        control = json.loads(self.session.post('https://{}/service/PXP2Communication.asmx/LoadControl'.format(
+            self.district_domain),
             json={
                 'request': {
-                    'control': control,
-                    'parameters': params
+                    'control': load_control.name,
+                    'parameters': load_control(params).generated_params
                 }
             }
         ).text)
 
-        soup = BeautifulSoup(load_control['d']['Data']['html'], 'html.parser')
+        soup = BeautifulSoup(control['d']['Data']['html'], 'html.parser')
 
         return soup

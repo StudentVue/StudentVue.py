@@ -80,41 +80,16 @@ class Course(dict):
         return self.__dict__
 
 
-class MarkingPeriod(dict):
-    def __init__(self, name, grade_book_control_params):
+class GradingPeriod(dict):
+    def __init__(self, name, guid):
         self.name = name
-        self.grade_book_control_params = grade_book_control_params
-        self.parent = None
+        self.guid = guid
 
         super().__init__(**self._asdict())
 
     def _asdict(self):
-        __dict__ = dict(self.__dict__)
-        __dict__.pop('grade_book_control_params')
-        __dict__.pop('parent')
-        return __dict__
+        return self.__dict__
 
 
-class GradedMarkingPeriod(MarkingPeriod):
-    def __init__(self, name, mark, score, grade_book_control_params):
-        super().__init__(name, grade_book_control_params)
-        self.mark = mark
-        self.score = score
-
-        dict.__init__(self, **self._asdict())
-
-
-class GradeBookEntry(dict):
-    def __init__(self, name, marking_periods):
-        self.name = name
-        self.marking_periods = marking_periods
-
-        for marking_period in self.marking_periods:
-            marking_period.parent = self
-
-        super().__init__(**self._asdict())
-
-    def _asdict(self):
-        __dict__ = dict(self.__dict__)
-        __dict__['marking_periods'] = [marking_period._asdict() for marking_period in __dict__['marking_periods']]
-        return __dict__
+class MarkingPeriod(GradingPeriod):
+    pass

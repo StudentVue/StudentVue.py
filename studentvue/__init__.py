@@ -1,1 +1,1 @@
-from .studentvue import StudentVue
+from .StudentVue import StudentVue

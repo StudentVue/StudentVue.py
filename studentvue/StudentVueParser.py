@@ -1,16 +1,20 @@
 from urllib.parse import parse_qs
+from bs4 import BeautifulSoup
 
 from datetime import datetime
 import json
 import re
 
+from studentvue.ParamCache import ParamCache
 import studentvue.models as models
 import studentvue.helpers as helpers
+
+import typing
 
 
 class StudentVueParser:
     @staticmethod
-    def parse_home_page(home_page):
+    def parse_home_page(home_page: BeautifulSoup) -> typing.Dict[str, str]:
         id_ = re.match(
             r'ID: ([0-9]+)', home_page.find(class_='student-id').text.strip()).group(1)
         name = home_page.find(class_='student-name').text
@@ -33,7 +37,7 @@ class StudentVueParser:
         )
 
     @staticmethod
-    def parse_schedule_data(schedule_data):
+    def parse_schedule_data(schedule_data: typing.List[typing.Dict[str, str]]) -> typing.List[models.Class]:
         classes = []
 
         for class_ in schedule_data:
@@ -53,7 +57,7 @@ class StudentVueParser:
         return classes
 
     @staticmethod
-    def parse_calendar_page(calendar_page):
+    def parse_calendar_page(calendar_page: BeautifulSoup) -> typing.List[models.Assignment]:
         assignments = []
 
         for assignment in calendar_page.find_all('a', {'data-control': 'Gradebook_AssignmentDetails'}):
@@ -72,7 +76,7 @@ class StudentVueParser:
         return assignments
 
     @staticmethod
-    def parse_student_info_page(student_info_page):
+    def parse_student_info_page(student_info_page: BeautifulSoup) -> typing.Dict[str, str]:
         student_info_table = student_info_page.find('table', class_='info_tbl')
 
         cells = student_info_table.find_all('td')
@@ -89,7 +93,7 @@ class StudentVueParser:
         }
 
     @staticmethod
-    def parse_school_info_page(school_info_page):
+    def parse_school_info_page(school_info_page: BeautifulSoup) -> typing.Dict[str, str]:
         school_info_table = school_info_page.find('table')
 
         cells = school_info_table.find_all('td')
@@ -112,7 +116,7 @@ class StudentVueParser:
         }
 
     @staticmethod
-    def parse_grade_book_class_page(grade_book_page, class_name):
+    def parse_grade_book_class_page(grade_book_page: BeautifulSoup, class_name: str) -> dict:
         assignments = []
 
         for assignment in json.loads(
@@ -148,7 +152,7 @@ class StudentVueParser:
         )
 
     @staticmethod
-    def parse_course_history_page(course_history_page):
+    def parse_course_history_page(course_history_page: BeautifulSoup) -> typing.Dict[str, typing.List[typing.List[models.Course]]]:
         course_history_div = course_history_page.find('div', class_='chs-course-history').div
         yearly_tables = course_history_div.find_all('table')
         yearly_labels = course_history_div.find_all('h2')
@@ -173,8 +177,18 @@ class StudentVueParser:
         return course_history
 
     @staticmethod
-    def parse_grade_book_page(grade_book_page):
-        grade_book = []
+    def parse_grade_book_page(grade_book_page: BeautifulSoup) -> dict:
+        update_panel = grade_book_page.find('div', class_='update-panel')
+        ParamCache().set('schoolID', update_panel['data-school-id'])
+        ParamCache().set('OrgYearGU', update_panel['data-orgyear-id'])
+
+        grade_book = {}
+
+        term_selector = grade_book_page.find('div', class_='term-selector')
+        grading_period = models.GradingPeriod(
+            name=term_selector.find('button', {'data-term-name': True}).text.strip(),
+            guid=term_selector.find('button', {'data-term-name': True})['data-term-name']
+        )
 
         tbody = grade_book_page.find('tbody')
         for course_button in tbody.find_all('button', class_='btn btn-link course-title'):
@@ -185,16 +199,25 @@ class StudentVueParser:
                 mark_period_button = mark_tr.find('button', class_='course-markperiod')
                 mark = mark_tr.find('span', class_='mark').text
                 score = mark_tr.find('span', class_='score').text
-                marking_periods.append(models.GradedMarkingPeriod(
-                    name=mark_period_button.text,
-                    mark=mark,
-                    score=score,
-                    grade_book_control_params=json.loads(mark_period_button['data-focus'])['FocusArgs']
-                ))
+                marking_periods.append({
+                    'marking_period': models.MarkingPeriod(
+                        name=mark_period_button.text,
+                        guid=mark_tr['data-mark-gu']
+                    ),
+                    'grading_period': grading_period,
+                    'mark': mark,
+                    'score': score
+                })
 
-            grade_book.append(models.GradeBookEntry(
-                name=course_name,
-                marking_periods=marking_periods
-            ))
+            grade_book[course_name] = marking_periods
 
-        return grade_book
+        return dict(
+            current=grading_period,
+            more=[
+                models.GradingPeriod(
+                    name=link.text.strip(),
+                    guid=link['data-period-id']
+                ) for link in term_selector.find('ul', class_='dropdown-menu').find_all('a')
+            ],
+            data=grade_book
+        )
