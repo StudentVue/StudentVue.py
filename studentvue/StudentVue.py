@@ -36,7 +36,7 @@ class StudentVue:
                  password: str,
                  district_domain: str,
                  parser: typing.Type[StudentVueParser] = StudentVueParser,
-                 cache_backend: typing.Union[typing.Type[BaseCache], str] = 'memory'
+                 cache_backend: typing.Union[BaseCache, str] = 'memory'
                  ):
         """
         :param username: your StudentVue account's username
@@ -63,6 +63,7 @@ class StudentVue:
             expire_after=15 * 60,
             allowable_methods=('GET', 'POST')
         )
+        self.session.cache.clear()
 
         login_page = BeautifulSoup(self.session.get(URLS['LOGIN'].format(self.district_domain)).text, 'html.parser')
 
