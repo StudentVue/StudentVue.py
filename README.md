@@ -6,9 +6,9 @@ This repository provides a easy way to access data from StudentVue portals in Py
 
 Note:
 
-If this library isn't updating properly, try explictly installing the latest version (e.g. `pip3 install studentvue==1.2.1`) to fix this issue in the future.
+If this library isn't updating properly, try explictly installing the latest version (e.g. `pip3 install studentvue==1.3.0`).
 
-If you're getting an [AttributeError](https://github.com/kajchang/StudentVue/issues/12) when trying to log in, this might mean that your school is on an older version of StudentVue. Try uninstalling this library (`pip uninstall studentvue`) and installing `studentvue-old` (`pip uninstall studentvue-old`).
+If you're getting an [AttributeError](https://github.com/kajchang/StudentVue/issues/12) when trying to log in, this might mean that your school is on an older version of StudentVue. Try uninstalling this library (`pip uninstall studentvue`) and installing `studentvue-old` (`pip install studentvue-old`).
 
 `studentvue-old` is not maintained and has a different API, but there is some [minimal documentation](https://github.com/kajchang/StudentVue/tree/old-version).
 
@@ -29,8 +29,6 @@ You can read some basic docs [here](https://kajchang.github.io/StudentVue/Studen
 
 The content and formatting of pages may vary from district to district, so the same parsing strategies might fail. If you find an instance of this, or have a general improvement you can [raise a new issue](https://github.com/kajchang/StudentVue/issues/new) and/or [open a pull request](https://github.com/kajchang/StudentVue/compare).
 
-## TODO
+## Ports
 
-- Finish Scraper
-
-- Write tests
+C# - [axiomaticTwist/StudentVueAPI](https://github.com/axiomaticTwist/StudentVueAPI)
