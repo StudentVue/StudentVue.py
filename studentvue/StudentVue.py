@@ -177,7 +177,7 @@ studentvue-old is not maintained and has a different API, but there is some mini
     def get_class_info(self, class_name: str, marking_period: str
                        ) -> typing.Dict[str, typing.Union[str, typing.List[models.GradedAssignment], float]]:
         """
-        :param: class_name: name of class to get info for
+        :param class_name: name of class to get info for
         :type class_name: str
         :param marking_period: marking period to get info for
         :type marking_period: str
@@ -293,8 +293,7 @@ studentvue-old is not maintained and has a different API, but there is some mini
     def get_image(self, fp: typing.BinaryIO) -> None:
         """
         :param fp: file-like object to write to
-        :return: your school photo
-        :rtype fp: PyFileObject
+        :type fp: typing.BinaryIO
         """
         fp.write(self.session.get(self.picture_url).content)
 
