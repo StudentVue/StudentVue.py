@@ -247,10 +247,12 @@ studentvue-old is not maintained and has a different API, but there is some mini
                                             'html.parser')
         return self.parser.parse_course_history_page(course_history_page)
 
-    def get_grading_periods(self) -> typing.Dict[str, typing.List[str]]:
+    def get_grading_periods(self) -> typing.Tuple[str, typing.Dict[str, typing.List[str]]]:
         """
         :return: your school's grading periods
-        :rtype: dict of grading period names paired with lists of marking period names
+        :rtype: tuple of
+                - current marking period
+                - dict of grading period names paired with lists of marking period names
         """
         grade_book_page = BeautifulSoup(self.session.get(URLS['GRADE_BOOK'].format(self.district_domain)).text,
                                         'html.parser')

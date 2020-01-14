@@ -201,10 +201,12 @@ class StudentVueParser:
         return grade_book
 
     @staticmethod
-    def parse_grade_book_page_for_grading_periods(grade_book_page: BeautifulSoup) -> typing.Dict[str, typing.List[str]]:
+    def parse_grade_book_page_for_grading_periods(grade_book_page: BeautifulSoup
+                                                  ) -> typing.Tuple[str, typing.Dict[str, typing.List[str]]]:
         grade_book_focus_data = json.loads(helpers.get_variable(grade_book_page.text, 'PXP.GBFocusData'))
+        current_term = grade_book_page.find(class_='breadcrumb-term').text.strip()
 
-        return {
+        return current_term, {
             k: v for (k, v) in (
                 (grading_period['Name'], [marking_period['Name'] for marking_period in grading_period['MarkPeriods']])
                 for grading_period in grade_book_focus_data['GradingPeriods']
