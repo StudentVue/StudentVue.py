@@ -174,13 +174,13 @@ studentvue-old is not maintained and has a different API, but there is some mini
 
         return self.parser.parse_school_info_page(school_info_page)
 
-    def get_class_info(self, class_name: str, marking_period: str
+    def get_class_info(self, class_name: str, period_name: str
                        ) -> typing.Dict[str, typing.Union[str, typing.List[models.GradedAssignment], float]]:
         """
         :param class_name: name of class to get info for
         :type class_name: str
-        :param marking_period: marking period to get info for
-        :type marking_period: str
+        :param period_name: grading/marking period to get info for
+        :type period_name: str
         :return: your current grades and assignments in the specified class
         :rtype: dict containing `grade`, `mark`, and `assignments` keys
         """
@@ -192,14 +192,17 @@ studentvue-old is not maintained and has a different API, but there is some mini
         found = False
 
         for grading_period_focus_data in grade_book_focus_data['GradingPeriods']:
+            if grading_period_focus_data['Name'] == period_name:
+                marking_period_focus_data = {'GU': ''}
+                break
             for marking_period_focus_data in grading_period_focus_data['MarkPeriods']:
-                if marking_period_focus_data['Name'] == marking_period:
+                if marking_period_focus_data['Name'] == period_name:
                     found = True
                     break
             if found:
                 break
         else:
-            raise ValueError('Marking period "' + marking_period + '" not found.')
+            raise ValueError('Period "' + period_name + '" not found.')
 
         # noinspection PyUnboundLocalVariable
         grade_book_focus_class_data = self.session.post(
