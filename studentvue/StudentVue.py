@@ -1,336 +1,210 @@
-from requests_cache import CachedSession
-from requests_cache.backends import BaseCache
-from bs4 import BeautifulSoup
+import zeep
 
+from lxml import etree
+from xmljson import abdera, XMLData
 from urllib.parse import urlparse
 
-from datetime import datetime
-import json
+from collections import OrderedDict
 
-from studentvue.StudentVueParser import StudentVueParser
-import studentvue.helpers as helpers
-import studentvue.models as models
 
-import typing
-
-URLS = {
-    'LOGIN': 'https://{}/PXP2_Login_Student.aspx?regenerateSessionId=True',
-    'HOME': 'https://{}/Home_PXP2.aspx',
-    'SCHEDULE': 'https://{}/PXP2_ClassSchedule.aspx?AGU=0',
-    'CALENDAR': 'https://{}/PXP2_Calendar.aspx?AGU=0',
-    'STUDENT_INFO': 'https://{}/PXP2_MyAccount.aspx?AGU=0',
-    'SCHOOL_INFO': 'https://{}/PXP2_SchoolInformation.aspx?AGU=0',
-    'COURSE_HISTORY': 'https://{}/PXP2_CourseHistory.aspx?AGU=0',
-    'GRADE_BOOK': 'https://{}/PXP2_Gradebook.aspx?AGU=0',
-    'DATA_GRID': 'https://{}/service/PXP2Communication.asmx/DXDataGridRequest',
-    'LOAD_CONTROL': 'https://{}/service/PXP2Communication.asmx/LoadControl',
-    'GRADE_BOOK_FOCUS_INFO': 'https://{}/service/PXP2Communication.asmx/GradebookFocusClassInfo'
-}
+class UnescapingPlugin(zeep.Plugin):
+    def egress(self, envelope, http_headers, operation, binding_options):
+        xml_string = etree.tostring(envelope).decode()
+        xml_string = xml_string.replace('&amp;', '&')
+        new_envelope = etree.fromstring(xml_string)
+        return new_envelope, http_headers
 
 
 class StudentVue:
-    """The StudentVue scraper object."""
+    """The StudentVue API class"""
 
     def __init__(self,
-                 username: str,
-                 password: str,
-                 district_domain: str,
-                 parser: typing.Type[StudentVueParser] = StudentVueParser,
-                 cache_backend: typing.Union[BaseCache, str] = 'memory'
-                 ):
+                 username: str, password: str, district_domain: str,
+                 xmljson_serializer: XMLData = abdera,
+                 zeep_transport: zeep.Transport = None,
+                 zeep_settings: zeep.Settings = None,
+                 debug: bool = False):
         """
-        :param username: your StudentVue account's username
+        :param username: student's username
         :type username: str
-        :param password: your StudentVue account's password
+        :param password: student's password
         :type password: str
-        :param district_domain: your school district's StudentVue domain
+        :param district_domain: domain that the  school district hosts StudentVue on
         :type district_domain: str
-        :param parser: HTML/JSON parser that extracts relevant data
-        :type parser: studentvue.StudentVueParser.StudentVueParser
-        :param cache_backend: requests-cache backend
-        :type cache_backend: requests_cache.backends.BaseCache
+        :param xmljson_serializer: (optional) serializer used to serialize xml to json
+        :type xmljson_serializer: xmljson.XMLData
+        :param zeep_transport: (optional) custom zeep client transport
+        :type zeep_transport: zeep.Transport
+        :param zeep_settings: (optional) custom zeep client settings
+        :type zeep_settings: zeep.Settings
+        :param debug: if set to true, turns on debug logging from zeep
+        :type debug: bool
         """
-
-        self.parser = parser
-
-        self.district_domain = urlparse(district_domain).netloc + urlparse(district_domain).path
-        if self.district_domain[len(self.district_domain) - 1] == '/':
-            self.district_domain = self.district_domain[:-1]
-
-        self.session = CachedSession(
-            cache_name=username,
-            backend=cache_backend,
-            expire_after=15 * 60,
-            allowable_methods=('GET', 'POST')
-        )
-        self.session.cache.clear()
-
-        login_page = BeautifulSoup(self.session.get(URLS['LOGIN'].format(self.district_domain)).text, 'html.parser')
-
-        try:
-            login_form_data = helpers.parse_form(login_page.find(id='aspnetForm'))
-        except AttributeError:
-            raise Exception("""
-This library getting an AttributeError when trying to log in, which might mean that your school is on an older version of StudentVue.
-Try uninstalling this library (pip uninstall studentvue) and installing studentvue-old (pip uninstall studentvue-old).
-studentvue-old is not maintained and has a different API, but there is some minimal documentation: https://github.com/kajchang/StudentVue/tree/old-version.
-            """)
-
-        login_form_data['ctl00$MainContent$username'] = username
-        login_form_data['ctl00$MainContent$password'] = password
-
-        resp = self.session.post(URLS['LOGIN'].format(self.district_domain), data=login_form_data)
-
-        if resp.url != URLS['HOME'].format(self.district_domain):
-            raise ValueError('Incorrect Username or Password')
-
-        home_page = BeautifulSoup(resp.text, 'html.parser')
-        home_page_data = self.parser.parse_home_page(home_page)
-
-        self.id_ = home_page_data['id_']
-        self.name = home_page_data['name']
-
-        self.school_name = home_page_data['school_name']
-        self.school_phone = home_page_data['school_phone']
-
-        self.picture_url = 'https://{}/{}'.format(self.district_domain, home_page_data['picture_src'])
-        self.student_guid = home_page_data['student_guid']
-
-    def get_schedule(self, semester: int = None) -> typing.List[models.Class]:
-        """
-        :param semester: (optional) if provided, it will get the schedule for that semester instead of the default one
-        :type semester: int
-        :return: a list of the classes you're taking
-        :rtype: list of studentvue.models.Class
-        """
-        if semester is not None:
-            semester_parameter = '&VDT=' + str(semester)
+        if debug:
+            self._setup_debug()
         else:
-            semester_parameter = ''
+            self._suppress_warnings()
 
-        schedule_page = BeautifulSoup(self.session.get(URLS['SCHEDULE'].format(self.district_domain) +
-                                                       semester_parameter).text, 'html.parser')
+        self._username = username
+        self._password = password
 
-        script = schedule_page.find_all('script', {'type': 'text/javascript'})[-1]
-        try:
-            name, params = helpers.parse_data_grid(script.text)
-        except AttributeError:
-            return []
+        parse_result = urlparse(district_domain)
+        if parse_result.scheme:
+            self.district_domain = parse_result.netloc
+        else:
+            self.district_domain = parse_result.path
+            if self.district_domain[len(self.district_domain) - 1] == '/':
+                self.district_domain = self.district_domain[:-1]
 
-        schedule_data = self._get_data_grid(name, params, {
-            'group': None,
-            'requireTotalCount': True,
-            'searchOperation': 'contains',
-            'searchValue': None,
-            'skip': 0,
-            'sort': None,
-            'take': 15
-        })
-
-        return self.parser.parse_schedule_data(
-            typing.cast(typing.List[typing.Dict[str, str]], schedule_data)
+        self.xmljson_serializer = xmljson_serializer
+        self.client = zeep.Client(
+            'https://{0}/Service/PXPCommunication.asmx?WSDL'.format(self.district_domain),
+            plugins=[UnescapingPlugin()],
+            transport=zeep_transport,
+            settings=zeep_settings
         )
 
-    def get_assignments(self,
-                        month: int = datetime.now().month,
-                        year: int = datetime.now().year) -> typing.List[models.Assignment]:
+    def get_messages(self) -> OrderedDict:
         """
-        :param month: the month to get assignments from, defaults to the current month
-        :type month: int
-        :param year: the year to get assignments from, defaults to the current year
-        :type year: int
-        :return: a list of the assignments due in the specified month
-        :rtype: list of studentvue.model.Assignment
+        :return: student's messages
+        :rtype: OrderedDict
         """
-        calendar_page = BeautifulSoup(self.session.get(URLS['CALENDAR'].format(self.district_domain)).text,
-                                      'html.parser')
+        return self._xml_json_serialize(self._make_service_request('GetPXPMessages'))
 
-        if month is not datetime.now().month or year is not datetime.now().year:
-            calendar_form_data = helpers.parse_form(calendar_page.find(id='aspnetForm'))
-            calendar_form_data['LB'] = '{}/1/{}'.format(month, year)
-            calendar_page = BeautifulSoup(self.session.post(URLS['CALENDAR'].format(self.district_domain),
-                                                            data=calendar_form_data).text,
-                                          'html.parser')
-
-        return self.parser.parse_calendar_page(calendar_page)
-
-    def get_student_info(self) -> typing.Dict[str, str]:
+    def get_calendar(self) -> OrderedDict:
         """
-        :return: miscellaneous student information
-        :rtype: dict of (str, str)
+        :return: student's assignments / events calendar
+        :rtype: OrderedDict
         """
-        student_info_page = BeautifulSoup(self.session.get(URLS['STUDENT_INFO'].format(self.district_domain)).text,
-                                          'html.parser')
+        return self._xml_json_serialize(self._make_service_request('StudentCalendar'))
 
-        return self.parser.parse_student_info_page(student_info_page)
-
-    def get_school_info(self) -> typing.Dict[str, str]:
+    def get_attendance(self) -> OrderedDict:
         """
-        :return: miscellaneous school information
-        :rtype: dict of (str, str)
+        :return: student's attendance
+        :rtype: OrderedDict
         """
-        school_info_page = BeautifulSoup(self.session.get(URLS['SCHOOL_INFO'].format(self.district_domain)).text,
-                                         'html.parser')
+        return self._xml_json_serialize(self._make_service_request('Attendance'))
 
-        return self.parser.parse_school_info_page(school_info_page)
-
-    def get_class_info(self, class_name: str, period_name: str
-                       ) -> typing.Dict[str, typing.Union[str, typing.List[models.GradedAssignment], float]]:
+    def get_gradebook(self, report_period: int = 0) -> OrderedDict:
         """
-        :param class_name: name of class to get info for
-        :type class_name: str
-        :param period_name: grading/marking period to get info for
-        :type period_name: str
-        :return: your current grades and assignments in the specified class
-        :rtype: dict containing `grade`, `mark`, and `assignments` keys
+        :param report_period: (optional) report period to fetch gradebook for
+        :type report_period: int
+        :return: student's gradebook for the specified report period
+        :rtype: OrderedDict
         """
-        grade_book_page = BeautifulSoup(self.session.get(URLS['GRADE_BOOK'].format(self.district_domain)).text,
-                                        'html.parser')
+        return self._xml_json_serialize(self._make_service_request('Gradebook', ReportPeriod=report_period))
 
-        grade_book_focus_data = json.loads(helpers.get_variable(grade_book_page.text, 'PXP.GBFocusData'))
+    def get_class_notes(self) -> OrderedDict:
+        """
+        :return: student's class notes
+        :rtype: OrderedDict
+        """
+        return self._xml_json_serialize(self._make_service_request('StudentHWNotes'))
 
-        found = False
+    def get_student_info(self) -> OrderedDict:
+        """
+        :return: student's information
+        :rtype: OrderedDict
+        """
+        return self._xml_json_serialize(self._make_service_request('StudentInfo'))
 
-        for grading_period_focus_data in grade_book_focus_data['GradingPeriods']:
-            if grading_period_focus_data['Name'] == period_name:
-                marking_period_focus_data = {'GU': ''}
-                break
-            for marking_period_focus_data in grading_period_focus_data['MarkPeriods']:
-                if marking_period_focus_data['Name'] == period_name:
-                    found = True
-                    break
-            if found:
-                break
-        else:
-            raise ValueError('Period "' + period_name + '" not found.')
+    def get_schedule(self, term_index: int = 0) -> OrderedDict:
+        """
+        :param term_index: (optional) term index to fetch schedule for
+        :type term_index: int
+        :return: student's schedule for the specified term
+        :rtype: OrderedDict
+        """
+        return self._xml_json_serialize(self._make_service_request('StudentClassList', TermIndex=term_index))
 
-        # noinspection PyUnboundLocalVariable
-        grade_book_focus_class_data = self.session.post(
-            URLS['GRADE_BOOK_FOCUS_INFO'].format(self.district_domain),
-            json={
-                'request': {
-                    'AGU': 0,
-                    'gradingPeriodGU': grading_period_focus_data['GU'],
-                    'markPeriodGU': marking_period_focus_data['GU'],
-                    'orgYearGU': grading_period_focus_data['OrgYearGU'],
-                    'schoolID': grading_period_focus_data['schoolID']
+    def get_school_info(self) -> OrderedDict:
+        """
+        :return: student's school information
+        :rtype: OrderedDict
+        """
+        return self._xml_json_serialize(self._make_service_request('StudentSchoolInfo'))
+
+    def list_report_cards(self) -> OrderedDict:
+        """
+        :return: list of student's report cards
+        :rtype: OrderedDict
+        """
+        return self._xml_json_serialize(self._make_service_request('GetReportCardInitialData'))
+
+    def get_report_card(self, document_guid: str) -> OrderedDict:
+        """
+        :param document_guid: id of the report card to fetch, found using :func:`~studentvue.StudentVue.list_report_cards`
+        :type document_guid: str
+        :return: content of the specified report card
+        :rtype: OrderedDict
+        """
+        return self._xml_json_serialize(self._make_service_request('GetReportCardDocumentData', DocumentGU=document_guid))
+
+    def list_documents(self) -> OrderedDict:
+        """
+        :return: list of student's documents
+        :rtype: OrderedDict
+        """
+        return self._xml_json_serialize(self._make_service_request('GetStudentDocumentInitialData'))
+
+    def get_document(self, document_guid: str) -> OrderedDict:
+        """
+        :param document_guid: id of the document to fetch, found using :func:`~studentvue.StudentVue.list_documents`
+        :type document_guid: str
+        :return: content of the specified document
+        :rtype: OrderedDict
+        """
+        return self._xml_json_serialize(self._make_service_request('GetContentOfAttachedDoc', DocumentGU=document_guid))
+
+    @staticmethod
+    def _suppress_warnings():
+        import logging
+        logging.getLogger('zeep').setLevel(logging.ERROR)
+
+    @staticmethod
+    def _setup_debug():
+        import logging.config
+
+        logging.config.dictConfig({
+            'version': 1,
+            'formatters': {
+                'verbose': {
+                    'format': '%(name)s: %(message)s'
                 }
+            },
+            'handlers': {
+                'console': {
+                    'level': 'DEBUG',
+                    'class': 'logging.StreamHandler',
+                    'formatter': 'verbose',
+                },
+            },
+            'loggers': {
+                'zeep.transports': {
+                    'level': 'DEBUG',
+                    'propagate': True,
+                    'handlers': ['console'],
+                },
             }
-        ).json()
-
-        for class_data in grade_book_focus_class_data['d']['Data']['Classes']:
-            if class_data['Name'] == class_name:
-                break
-        else:
-            raise ValueError('Class "' + class_name + '" not found.')
-
-        grade_book_class_page = self._load_control('Gradebook_ClassDetails', {
-            'AGU': 0,
-            'assignmentID': -1,
-            'classID': class_data['ID'],
-            'gradePeriodGU': grading_period_focus_data['GU'],
-            'markPeriodGU': marking_period_focus_data['GU'],
-            'OrgYearGU': grading_period_focus_data['OrgYearGU'],
-            'schoolID': grading_period_focus_data['schoolID'],
-            'standardIdentifier': None,
-            'studentGU': self.student_guid,
-            'subjectID': -1,
-            'teacherID': -1,
-            'viewName': None
         })
 
-        return self.parser.parse_grade_book_class_page(grade_book_class_page, class_name)
+    def _make_service_request(self, method_name, **kwargs) -> str:
+        param_str = '&lt;Parms&gt;'
+        for key, value in kwargs.items():
+            param_str += '&lt;' + key + '&gt;'
+            param_str += str(value)
+            param_str += '&lt;/' + key + '&gt;'
+        param_str += '&lt;/Parms&gt;'
 
-    def get_course_history(self) -> typing.Dict[str, typing.List[typing.List[models.Course]]]:
-        """
-        :return: your full course history, including semester grades and number of credits earned per class.
-        :rtype: dict of grade year paired with a list of semesters, each semester being a list of type studentvue.models.Course
-        """
-        course_history_page = BeautifulSoup(self.session.get(URLS['COURSE_HISTORY'].format(self.district_domain)).text,
-                                            'html.parser')
-        return self.parser.parse_course_history_page(course_history_page)
+        return self.client.service.ProcessWebServiceRequest(
+            userID=self._username,
+            password=self._password,
+            skipLoginLog=1,
+            parent=0,
+            webServiceHandleName='PXPWebServices',
+            methodName=method_name,
+            paramStr=param_str
+        )
 
-    def get_grading_periods(self) -> typing.Tuple[str, typing.Dict[str, typing.List[str]]]:
-        """
-        :return: your school's grading periods
-        :rtype: tuple of
-                - current marking period
-                - dict of grading period names paired with lists of marking period names
-        """
-        grade_book_page = BeautifulSoup(self.session.get(URLS['GRADE_BOOK'].format(self.district_domain)).text,
-                                        'html.parser')
-
-        return self.parser.parse_grade_book_page_for_grading_periods(grade_book_page)
-
-    def get_grade_book(self, grading_period: str = None) -> typing.Dict[str, typing.List[typing.Dict[str, str]]]:
-        """
-        :param grading_period: (optional) grading period to get grades for, default to current
-        :type grading_period: str
-        :return: your mark and score in all your graded classes
-        :rtype: dict of class names paired with a list of dicts of
-                `score` - grade as a percentage
-                `mark` - letter grade
-                `marking_period` - marking period
-                `grading_period` - grading period
-        """
-        grade_book_page = BeautifulSoup(self.session.get(URLS['GRADE_BOOK'].format(self.district_domain)).text,
-                                        'html.parser')
-
-        if grading_period is not None:
-            grade_book_focus_data = json.loads(helpers.get_variable(grade_book_page.text, 'PXP.GBFocusData'))
-
-            for grading_period_focus_data in grade_book_focus_data['GradingPeriods']:
-                if grading_period_focus_data['Name'] == grading_period:
-                    break
-            else:
-                raise ValueError('Grading period "' + grading_period + '" not found.')
-
-            grade_book_page = self._load_control('Gradebook_SchoolClasses', {
-                'AGU': 0,
-                'gradePeriodGU': grading_period_focus_data['GU'],
-                'GradingPeriodGroup': grading_period_focus_data['GroupName'],
-                'OrgYearGU': grading_period_focus_data['OrgYearGU'],
-                'schoolID': grading_period_focus_data['schoolID']
-            })
-
-        return self.parser.parse_grade_book_page_for_grades(grade_book_page)
-
-    def get_image(self, fp: typing.BinaryIO) -> None:
-        """
-        :param fp: file-like object to write to
-        :type fp: typing.BinaryIO
-        """
-        fp.write(self.session.get(self.picture_url).content)
-
-    def _get_data_grid(self, name: str, params: dict, load_options: dict) -> typing.Union[list, dict]:
-        data_grid = self.session.post(
-            URLS['DATA_GRID'].format(self.district_domain),
-            json={
-                'request': {
-                    'agu': 0,
-                    'dataRequestType': 'Load',
-                    'dataSourceTypeName': name,
-                    'gridParameters': json.dumps(params),
-                    'loadOptions': load_options
-                }
-            }
-        ).json()
-
-        data = data_grid['d']['Data']['data']
-
-        return data
-
-    def _load_control(self, control_name: str, params: dict) -> BeautifulSoup:
-        control = self.session.post(
-            URLS['LOAD_CONTROL'].format(self.district_domain),
-            json={
-                'request': {
-                    'control': control_name,
-                    'parameters': params
-                }
-            }
-        ).json()
-
-        soup = BeautifulSoup(control['d']['Data']['html'], 'html.parser')
-
-        return soup
+    def _xml_json_serialize(self, xml_string: str) -> OrderedDict:
+        return self.xmljson_serializer.data(etree.fromstring(xml_string))
