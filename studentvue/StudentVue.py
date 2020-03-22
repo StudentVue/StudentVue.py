@@ -118,3 +118,21 @@ class StudentVue:
 
     def get_student_info(self) -> OrderedDict:
         return self._xml_json_serialize(self._make_service_request('StudentInfo'))
+
+    def get_schedule(self, term_index: int = 0) -> OrderedDict:
+        return self._xml_json_serialize(self._make_service_request('StudentClassList', TermIndex=term_index))
+
+    def get_school_info(self) -> OrderedDict:
+        return self._xml_json_serialize(self._make_service_request('StudentSchoolInfo'))
+
+    def list_report_cards(self) -> OrderedDict:
+        return self._xml_json_serialize(self._make_service_request('GetReportCardInitialData'))
+
+    def get_report_card(self, document_guid: str) -> OrderedDict:
+        return self._xml_json_serialize(self._make_service_request('GetReportCardDocumentData', DocumentGU=document_guid))
+
+    def list_documents(self) -> OrderedDict:
+        return self._xml_json_serialize(self._make_service_request('GetStudentDocumentInitialData'))
+
+    def get_document(self, document_guid: str) -> OrderedDict:
+        return self._xml_json_serialize(self._make_service_request('GetContentOfAttachedDoc', DocumentGU=document_guid))
