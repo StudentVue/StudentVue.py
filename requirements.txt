@@ -1,2 +1,2 @@
 requests>=2.20.0
-beautifulsoup4>=4.6.3
+zeep>=3.4.0
