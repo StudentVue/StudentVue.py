@@ -1,7 +1,7 @@
 import zeep
 
 from lxml import etree
-from xmljson import abdera, XMLData
+from xmljson import badgerfish, XMLData
 from urllib.parse import urlparse
 
 from collections import OrderedDict
@@ -20,7 +20,7 @@ class StudentVue:
 
     def __init__(self,
                  username: str, password: str, district_domain: str,
-                 xmljson_serializer: XMLData = abdera,
+                 xmljson_serializer: XMLData = badgerfish,
                  zeep_transport: zeep.Transport = None,
                  zeep_settings: zeep.Settings = None,
                  debug: bool = False):
