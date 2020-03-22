@@ -4,13 +4,7 @@
 
 This repository provides a easy way to access data from StudentVue portals in Python programs.
 
-Note:
-
-If this library isn't updating properly, try explictly installing the latest version (e.g. `pip3 install studentvue==1.3.0`).
-
-If you're getting an [AttributeError](https://github.com/kajchang/StudentVue/issues/12) when trying to log in, this might mean that your school is on an older version of StudentVue. Try uninstalling this library (`pip uninstall studentvue`) and installing `studentvue-old` (`pip install studentvue-old`).
-
-`studentvue-old` is not maintained and has a different API, but there is some [minimal documentation](https://github.com/kajchang/StudentVue/tree/old-version).
+This project recently transitioned to using the SOAP API from the app instead of the web-based one. Using the SOAP API is much faster, consistent, and more lightweight. However, the APIs are not compatible, so if you need compatibility the web-based one, run `pip install studentvue==1.3.2`.
 
 ## Logging In
 
