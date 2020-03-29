@@ -6,7 +6,7 @@ This repository provides a easy way to access data from StudentVue portals in Py
 
 This project recently transitioned to using the SOAP API from the app instead of the web-based one. Using the SOAP API is much faster, consistent, and more lightweight. However, the APIs are not compatible, so if you need compatibility the web-based one, run `pip install studentvue==1.3.2`.
 
-See documentation on the underlying SOAP API [here](https://github.com/StudentVue-Community/StudentVue-SOAPI-Docs).
+See documentation on the underlying SOAP API [here](https://github.com/StudentVue-Community/SOAPI-Docs).
 
 ## Logging In
 
