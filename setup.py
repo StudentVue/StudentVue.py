@@ -4,7 +4,7 @@ import os
 setup(
     name='studentvue',
     packages=['studentvue'],
-    version='2.0.1',
+    version='2.0.2',
     description='Unofficial Python API Client for StudentVue Portals',
     author='Kai Chang',
     url='https://github.com/StudentVue-Community/StudentVue',
