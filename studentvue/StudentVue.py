@@ -85,14 +85,19 @@ class StudentVue:
         """
         return self._xml_json_serialize(self._make_service_request('Attendance'))
 
-    def get_gradebook(self, report_period: int = 0) -> OrderedDict:
+    def get_gradebook(self, report_period: int = None) -> OrderedDict:
         """
         :param report_period: (optional) report period to fetch gradebook for
         :type report_period: int
         :return: student's gradebook for the specified report period
         :rtype: OrderedDict
         """
-        return self._xml_json_serialize(self._make_service_request('Gradebook', ReportPeriod=report_period))
+        params = {}
+
+        if report_period is not None:
+            params['ReportPeriod'] = report_period
+
+        return self._xml_json_serialize(self._make_service_request('Gradebook', **params))
 
     def get_class_notes(self) -> OrderedDict:
         """
@@ -108,14 +113,19 @@ class StudentVue:
         """
         return self._xml_json_serialize(self._make_service_request('StudentInfo'))
 
-    def get_schedule(self, term_index: int = 0) -> OrderedDict:
+    def get_schedule(self, term_index: int = None) -> OrderedDict:
         """
         :param term_index: (optional) term index to fetch schedule for
         :type term_index: int
         :return: student's schedule for the specified term
         :rtype: OrderedDict
         """
-        return self._xml_json_serialize(self._make_service_request('StudentClassList', TermIndex=term_index))
+        params = {}
+
+        if term_index is not None:
+            params['TermIndex'] = term_index
+
+        return self._xml_json_serialize(self._make_service_request('StudentClassList', **params))
 
     def get_school_info(self) -> OrderedDict:
         """
