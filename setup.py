@@ -5,9 +5,9 @@ setup(
     name='studentvue',
     packages=['studentvue'],
     version='2.0.2',
-    description='Unofficial Python API Client for StudentVue Portals',
+    description='Python StudentVue Library',
     author='Kai Chang',
-    url='https://github.com/StudentVue-Community/StudentVue',
+    url='https://github.com/StudentVue-Community/StudentVue.py',
     license='MIT',
     long_description_content_type='text/markdown',
     long_description=open(os.path.join(os.path.abspath(
