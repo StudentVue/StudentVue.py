@@ -19,7 +19,7 @@ sv = StudentVue('username', 'password', 'domain name')
 
 ## Documentation
 
-You can read some basic docs [here](https://StudentVue-Community.github.io/StudentVue/StudentVue.html).
+You can read some basic docs [here](https://StudentVue-Community.github.io/StudentVue.py/StudentVue.html).
 
 ## Bugs and Contributing
 
