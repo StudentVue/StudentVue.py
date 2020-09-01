@@ -4,7 +4,7 @@ import os
 setup(
     name='studentvue',
     packages=['studentvue'],
-    version='2.0.3',
+    version='2.0.4',
     description='Python StudentVue Library',
     author='Kai Chang',
     url='https://github.com/StudentVue-Community/StudentVue.py',
