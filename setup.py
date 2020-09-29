@@ -7,7 +7,7 @@ setup(
     version='2.0.4',
     description='Python StudentVue Library',
     author='Kai Chang',
-    url='https://github.com/StudentVue-Community/StudentVue.py',
+    url='https://github.com/StudentVue/StudentVue.py',
     license='MIT',
     long_description_content_type='text/markdown',
     long_description=open(os.path.join(os.path.abspath(
