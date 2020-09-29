@@ -21,6 +21,8 @@ sv = StudentVue('username', 'password', 'domain name')
 
 You can read some basic docs [here](https://StudentVue.github.io/StudentVue.py/StudentVue.html).
 
+All data from the API is in XML format, which is hard to use in Python, so the data is automatically transformed into json using [xmljson](https://github.com/sanand0/xmljson). You can configure the transformation convention using the `xmljson_serializer` parameter.
+
 ## Bugs and Contributing
 
 Different districts may be running incompatible versions of StudentVue. If you find such an instance or to make general improvements, feel free to [raise a new issue](https://github.com/kajchang/StudentVue/issues/new) and/or [open a pull request](https://github.com/kajchang/StudentVue/compare).
