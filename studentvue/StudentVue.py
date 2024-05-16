@@ -50,7 +50,7 @@ class StudentVue:
 
         parse_result = urlparse(district_domain)
         if parse_result.scheme:
-            self.district_domain = parse_result.netloc
+            self.district_domain = parse_result.netloc + parse_result.path
         else:
             self.district_domain = parse_result.path
             if self.district_domain[len(self.district_domain) - 1] == '/':
